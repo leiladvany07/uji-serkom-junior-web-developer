@@ -349,6 +349,31 @@ main{
   filter:drop-shadow(0 12px 20px rgba(20,28,43,0.12));
 }
 
+@media (max-width:480px){
+  .site-main{padding:0 1.2rem;}
+  .hero-shop{padding:2rem 0 1.2rem;}
+  .hero-title{font-size:1.6rem;}
+  .hero-sub{font-size:0.92rem;}
+  .hero-illustration{max-width:200px;}
+  .hero-cta,.search-form{width:100%;}
+  .hero-cta a{width:100%;text-align:center;}
+
+  .section{padding:1.5rem 0 2.5rem;}
+  .section-title{font-size:1.25rem;margin-bottom:1.1rem;}
+
+  .about-split{gap:1.2rem;}
+  .about-image{aspect-ratio:16/11;}
+  .about-points{gap:1rem;}
+  .about-text{font-size:0.92rem;}
+
+  .product-grid{gap:1rem;}
+  .testimoni-grid{gap:1rem;}
+  .order-steps{gap:0.9rem;}
+  .instagram-grid{gap:0.5rem;}
+
+  .footer-inner{padding:2rem 1.2rem;gap:1.5rem;}
+}
+
 /* Fade-in hero saat page load */
 @keyframes fadeUp{
   from{opacity:0;transform:translateY(16px);}
