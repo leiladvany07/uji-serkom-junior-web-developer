@@ -1,11 +1,10 @@
 <?php
 
-define('DB_HOST', 'localhost');
-define('DB_PORT', '5432');
-define('DB_NAME', 'toko_rajutt');
-define('DB_USER', 'postgres');
-define('DB_PASS', 'postgres');
-
+define('DB_HOST', getenv('PGHOST') ?: 'localhost');
+define('DB_PORT', getenv('PGPORT') ?: '5432');
+define('DB_NAME', getenv('PGDATABASE') ?: 'toko_rajutt');
+define('DB_USER', getenv('PGUSER') ?: 'postgres');
+define('DB_PASS', getenv('PGPASSWORD') ?: 'postgres');
 define('BASE_URL', '');
 
 try {
