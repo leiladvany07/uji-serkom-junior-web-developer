@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+  <rect width="400" height="400" fill="#A9A79A"/>
+  <g stroke="#33402C" stroke-width="2.5" opacity="0.45" fill="none">
+    <path d="M0 90 Q 25 70 50 90 T 100 90 T 150 90 T 200 90 T 250 90 T 300 90 T 350 90 T 400 90"/>
+    <path d="M0 140 Q 25 120 50 140 T 100 140 T 150 140 T 200 140 T 250 140 T 300 140 T 350 140 T 400 140"/>
+    <path d="M0 190 Q 25 170 50 190 T 100 190 T 150 190 T 200 190 T 250 190 T 300 190 T 350 190 T 400 190"/>
+    <path d="M0 240 Q 25 220 50 240 T 100 240 T 150 240 T 200 240 T 250 240 T 300 240 T 350 240 T 400 240"/>
+    <path d="M0 290 Q 25 270 50 290 T 100 290 T 150 290 T 200 290 T 250 290 T 300 290 T 350 290 T 400 290"/>
+  </g>
+  <text x="32" y="345" font-family="Georgia, serif" font-size="22" fill="#33402C" opacity="0.9">Sweater Oversize</text>
+</svg>
