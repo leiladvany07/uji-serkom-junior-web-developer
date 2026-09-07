@@ -30,7 +30,7 @@
       </div>
 
       <a href="<?= BASE_URL ?>/kontak.php">Kontak</a>
-      <a href="<?= BASE_URL ?>/profil-statis/" class="nav-profile">Profil developer</a>
+      <a href="https://profil-statis-production-87dd.up.railway.app" class="nav-profile">Profil developer</a>
       <a href="<?= BASE_URL ?>/admin/login.php" class="nav-admin" title="Masuk admin" aria-label="Masuk admin">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"></circle><path d="M4 20c0-4 3.6-6 8-6s8 2 8 6"></path></svg>
       </a>
