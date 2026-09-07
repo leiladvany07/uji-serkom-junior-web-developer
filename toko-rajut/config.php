@@ -18,7 +18,7 @@ try {
         ]
     );
 } catch (PDOException $e) {
-    die('Koneksi database gagal. Pastikan PostgreSQL berjalan, database "toko_rajut" sudah dibuat di pgAdmin, dan db/rajut_postgres.sql sudah dijalankan di dalamnya. Detail: ' . $e->getMessage());
+    die('Koneksi database gagal. Pastikan PostgreSQL berjalan, database "toko_rajutt" sudah dibuat di pgAdmin, dan db/rajut_postgres.sql sudah dijalankan di dalamnya. Detail: ' . $e->getMessage());
 }
 
 function format_rupiah($angka) {
