@@ -4,11 +4,21 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-define('DB_HOST', 'localhost');
-define('DB_PORT', '5432');
-define('DB_NAME', 'toko_rajutt');
-define('DB_USER', 'postgres');
-define('DB_PASS', 'postgres');
+if (getenv('PGHOST')) {
+    // Railway PostgreSQL
+    define('DB_HOST', getenv('PGHOST'));
+    define('DB_PORT', getenv('PGPORT') ?: '5432');
+    define('DB_NAME', getenv('PGDATABASE'));
+    define('DB_USER', getenv('PGUSER'));
+    define('DB_PASS', getenv('PGPASSWORD'));
+} else {
+    // PostgreSQL lokal
+    define('DB_HOST', 'localhost');
+    define('DB_PORT', '5432');
+    define('DB_NAME', 'toko_rajutt');
+    define('DB_USER', 'postgres');
+    define('DB_PASS', 'postgres');
+}
 
 define('BASE_URL', '');
 
@@ -23,7 +33,11 @@ try {
         ]
     );
 } catch (PDOException $e) {
-    die('Koneksi database gagal. Pastikan PostgreSQL berjalan, database "toko_rajut" sudah dibuat di pgAdmin, dan db/rajut_postgres.sql sudah dijalankan di dalamnya. Detail: ' . $e->getMessage());
+    die(
+        'Koneksi database gagal. ' .
+        'Pastikan konfigurasi PostgreSQL sudah benar. ' .
+        'Detail: ' . $e->getMessage()
+    );
 }
 
 function format_rupiah($angka) {
