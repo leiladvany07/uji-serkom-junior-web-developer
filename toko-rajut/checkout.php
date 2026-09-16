@@ -2,25 +2,64 @@
 if (session_status() === PHP_SESSION_NONE) session_start();
 require_once __DIR__ . '/config.php';
 
-$keranjang = $_SESSION['keranjang'] ?? [];
-if (empty($keranjang)) {
-    header('Location: keranjang.php');
-    exit;
+// Mode "Beli Sekarang": datang dari tombol di halaman detail produk (GET),
+// atau tetap dipertahankan lewat session selama proses checkout (POST).
+$langsung = null;
+if (isset($_GET['beli_id'])) {
+    $langsung = [
+        'id' => (int) $_GET['beli_id'],
+        'warna' => trim($_GET['beli_warna'] ?? ''),
+        'jumlah' => max(1, (int) ($_GET['beli_jumlah'] ?? 1)),
+    ];
+    $_SESSION['checkout_langsung'] = $langsung;
+} elseif (isset($_SESSION['checkout_langsung'])) {
+    $langsung = $_SESSION['checkout_langsung'];
 }
-
-$ids = array_keys($keranjang);
-$placeholders = implode(',', array_fill(0, count($ids), '?'));
-$stmt = $pdo->prepare("SELECT * FROM produk WHERE id IN ($placeholders)");
-$stmt->execute($ids);
-$produkList = $stmt->fetchAll();
 
 $items = [];
 $total = 0;
-foreach ($produkList as $p) {
-    $jumlah = $keranjang[$p['id']];
+
+if ($langsung) {
+    $stmt = $pdo->prepare('SELECT * FROM produk WHERE id = ?');
+    $stmt->execute([$langsung['id']]);
+    $p = $stmt->fetch();
+    if (!$p) {
+        unset($_SESSION['checkout_langsung']);
+        header('Location: produk.php');
+        exit;
+    }
+    $stokTersedia = max(1, (int) $p['stok']);
+    $jumlah = min($langsung['jumlah'], $stokTersedia);
     $subtotal = $p['harga'] * $jumlah;
-    $total += $subtotal;
-    $items[] = ['produk' => $p, 'jumlah' => $jumlah, 'subtotal' => $subtotal];
+    $items[] = ['produk' => $p, 'warna' => $langsung['warna'], 'jumlah' => $jumlah, 'subtotal' => $subtotal];
+    $total = $subtotal;
+} else {
+    $keranjang = $_SESSION['keranjang'] ?? [];
+    if (empty($keranjang)) {
+        header('Location: keranjang.php');
+        exit;
+    }
+
+    $keyInfo = [];
+    foreach (array_keys($keranjang) as $key) {
+        $parts = explode('::', $key, 2);
+        $keyInfo[$key] = ['id' => (int) $parts[0], 'warna' => $parts[1] ?? ''];
+    }
+    $ids = array_values(array_unique(array_column($keyInfo, 'id')));
+    $placeholders = implode(',', array_fill(0, count($ids), '?'));
+    $stmt = $pdo->prepare("SELECT * FROM produk WHERE id IN ($placeholders)");
+    $stmt->execute($ids);
+    $produkById = [];
+    foreach ($stmt->fetchAll() as $p) { $produkById[$p['id']] = $p; }
+
+    foreach ($keranjang as $key => $jumlah) {
+        $id = $keyInfo[$key]['id'];
+        if (!isset($produkById[$id])) continue;
+        $p = $produkById[$id];
+        $subtotal = $p['harga'] * $jumlah;
+        $total += $subtotal;
+        $items[] = ['produk' => $p, 'warna' => $keyInfo[$key]['warna'], 'jumlah' => $jumlah, 'subtotal' => $subtotal];
+    }
 }
 
 $errors = [];
@@ -46,17 +85,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$kode, $nama, $telepon, $email ?: null, $alamat, $catatan ?: null, $total]);
             $transaksiId = $stmt->fetchColumn();
 
-            $stmtItem = $pdo->prepare('INSERT INTO transaksi_item (transaksi_id, produk_id, nama_produk, harga, jumlah, subtotal) VALUES (?,?,?,?,?,?)');
+            $stmtItem = $pdo->prepare('INSERT INTO transaksi_item (transaksi_id, produk_id, nama_produk, warna, harga, jumlah, subtotal) VALUES (?,?,?,?,?,?,?)');
             $stmtStok = $pdo->prepare('UPDATE produk SET stok = GREATEST(stok - ?, 0) WHERE id = ?');
 
             foreach ($items as $item) {
                 $p = $item['produk'];
-                $stmtItem->execute([$transaksiId, $p['id'], $p['nama'], $p['harga'], $item['jumlah'], $item['subtotal']]);
+                $namaProduk = $p['nama'] . ($item['warna'] !== '' ? ' (' . $item['warna'] . ')' : '');
+                $stmtItem->execute([$transaksiId, $p['id'], $namaProduk, $item['warna'], $p['harga'], $item['jumlah'], $item['subtotal']]);
                 $stmtStok->execute([$item['jumlah'], $p['id']]);
             }
 
             $pdo->commit();
-            unset($_SESSION['keranjang']);
+            if ($langsung) {
+                unset($_SESSION['checkout_langsung']);
+            } else {
+                unset($_SESSION['keranjang']);
+            }
             header('Location: checkout_sukses.php?kode=' . urlencode($kode));
             exit;
         } catch (Exception $e) {
@@ -97,6 +141,9 @@ require __DIR__ . '/includes/header.php';
       <label>Catatan (opsional)
         <textarea name="catatan" rows="2"><?= h($_POST['catatan'] ?? '') ?></textarea>
       </label>
+       <label>Metode Pembayaran
+        <textarea name="pembayaran" rows="2"><?= h($_POST['pembayaran'] ?? '') ?></textarea>
+      </label>
       <button type="submit" class="btn btn-primary">Buat Pesanan</button>
     </form>
 
@@ -104,7 +151,7 @@ require __DIR__ . '/includes/header.php';
       <h2 class="cart-summary-title">Pesanan Anda</h2>
       <?php foreach ($items as $item): $p = $item['produk']; ?>
         <div class="checkout-summary-row">
-          <span><?= h($p['nama']) ?> &times; <?= $item['jumlah'] ?></span>
+          <span><?= h($p['nama']) ?><?= $item['warna'] !== '' ? ' (' . h($item['warna']) . ')' : '' ?> &times; <?= $item['jumlah'] ?></span>
           <span><?= format_rupiah($item['subtotal']) ?></span>
         </div>
       <?php endforeach; ?>

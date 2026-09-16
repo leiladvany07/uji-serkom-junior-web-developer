@@ -1,4 +1,7 @@
-<?php if (!isset($pdo)) { require_once __DIR__ . '/../config.php'; } ?>
+<?php
+if (session_status() === PHP_SESSION_NONE) session_start();
+if (!isset($pdo)) { require_once __DIR__ . '/../config.php'; }
+?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -22,6 +25,7 @@
 
     <nav class="main-nav" id="mainNav">
       <a href="<?= BASE_URL ?>/index.php">Beranda</a>
+      <?php $kategoriNav = $pdo->query('SELECT id, nama, slug FROM kategori ORDER BY nama')->fetchAll(); ?>
       <a href="<?= BASE_URL ?>/produk.php">Produk</a>
 
       <div class="nav-dropdown">
@@ -29,15 +33,23 @@
       </div>
 
       <a href="<?= BASE_URL ?>/kontak.php">Kontak</a>
-      <a href="<?= BASE_URL ?>/keranjang.php" class="nav-cart">🛒 Keranjang</a>
-      <a href="https://profil-statis-production-87dd.up.railway.app" class="nav-profile">Profil developer</a>
 
-      <a href="<?= BASE_URL ?>/admin/login.php" class="nav-admin" title="Masuk admin" aria-label="Masuk admin">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="8" r="4"></circle>
-          <path d="M4 20c0-4 3.6-6 8-6s8 2 8 6"></path>
+      <?php $jumlahKeranjang = array_sum($_SESSION['keranjang'] ?? []); ?>
+      <a href="<?= BASE_URL ?>/keranjang.php" class="nav-cart" title="Keranjang" aria-label="Keranjang">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="9" cy="21" r="1"></circle>
+          <circle cx="20" cy="21" r="1"></circle>
+          <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
         </svg>
+        <?php if ($jumlahKeranjang > 0): ?><span class="cart-badge"><?= $jumlahKeranjang ?></span><?php endif; ?>
       </a>
+
+      <div class="main-nav-bottom">
+        <a href="http://localhost:8001/index.html" class="nav-profile">Profil developer</a>
+        <a href="<?= BASE_URL ?>/admin/login.php" class="nav-admin" title="Masuk admin" aria-label="Masuk admin">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"></circle><path d="M4 20c0-4 3.6-6 8-6s8 2 8 6"></path></svg>
+        </a>
+      </div>
     </nav>
   </div>
 </header>

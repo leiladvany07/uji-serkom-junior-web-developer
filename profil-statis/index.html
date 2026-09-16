@@ -9,131 +9,598 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
+<style>
+  /* ===================================================================
+     TAMBAHAN TAMPILAN — semua di bawah ini menyempurnakan tampilan
+     tanpa mengubah css/style.css asli.
+  =================================================================== */
+  :root {
+    --lr-accent: #b08d57;
+    --lr-navy: #101a30;
+    --lr-line: rgba(16, 26, 48, 0.12);
+    --lr-muted: #6b7280;
+  }
+
+  /* ---------- Navbar: rapi walau item bertambah ---------- */
+  .site-header .header-inner {
+    display: flex !important;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem 1.5rem;
+    padding-top: .5rem;
+    padding-bottom: .5rem;
+  }
+  .site-header .brand {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    font-size: 1.1rem;
+    margin: 0;
+  }
+  .site-header .main-nav {
+    display: flex !important;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 1rem;
+    flex: 1 1 100%;
+    order: 3;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    padding-bottom: 2px;
+  }
+  .site-header .main-nav::-webkit-scrollbar { display: none; }
+  .site-header .nav-link {
+    white-space: nowrap;
+    font-size: .85rem;
+    flex: 0 0 auto;
+  }
+  .site-header .nav-cta {
+    white-space: nowrap;
+    flex: 0 0 auto;
+    order: 2;
+    margin-left: auto;
+  }
+  .site-header .nav-toggle { display: none; }
+  @media (max-width: 640px) {
+    .site-header .brand { font-size: .95rem; }
+  }
+
+  /* ---------- Section eyebrow kecil (baru) ---------- */
+  .lr-eyebrow {
+    display: inline-block;
+    font-size: .72rem;
+    font-weight: 600;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--lr-accent);
+    margin: 0 0 .5rem;
+  }
+
+  /* ---------- Timeline untuk Pendidikan & Pengalaman ---------- */
+  .lr-timeline {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 1.75rem;
+    padding-left: 2rem;
+    max-width: 760px;
+  }
+  .lr-timeline::before {
+    content: "";
+    position: absolute;
+    left: .3125rem;
+    top: .4rem;
+    bottom: .4rem;
+    width: 1px;
+    background: var(--lr-line);
+  }
+  .lr-timeline-item {
+    position: relative;
+  }
+  .lr-timeline-item::before {
+    content: "";
+    position: absolute;
+    left: -2rem;
+    top: .35rem;
+    width: .625rem;
+    height: .625rem;
+    border-radius: 50%;
+    background: var(--lr-accent);
+    box-shadow: 0 0 0 4px rgba(176, 141, 87, 0.15);
+  }
+  .lr-timeline-tag {
+    display: inline-block;
+    font-size: .72rem;
+    font-weight: 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--lr-accent);
+    margin-bottom: .35rem;
+  }
+  .lr-timeline-title {
+    font-family: 'Fraunces', serif;
+    font-size: 1.15rem;
+    font-weight: 600;
+    margin: 0 0 .4rem;
+    color: var(--lr-navy);
+  }
+  .lr-timeline-desc {
+    margin: 0;
+    color: var(--lr-muted);
+    line-height: 1.6;
+    font-size: .95rem;
+  }
+
+  /* ---------- Kartu sertifikat (baru) ---------- */
+  .lr-cert-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1.5rem;
+  }
+  .lr-cert-card {
+    background: #fff;
+    border: 1px solid var(--lr-line);
+    border-radius: 14px;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+    transition: box-shadow .2s ease, transform .2s ease;
+  }
+  .lr-cert-card:hover {
+    box-shadow: 0 12px 30px rgba(16, 26, 48, 0.08);
+    transform: translateY(-2px);
+  }
+  .lr-cert-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: rgba(176, 141, 87, 0.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: .25rem;
+  }
+  .lr-cert-icon svg { width: 20px; height: 20px; color: var(--lr-accent); }
+  .lr-cert-name {
+    font-family: 'Fraunces', serif;
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--lr-navy);
+  }
+  .lr-cert-meta {
+    margin: 0;
+    font-size: .88rem;
+    color: var(--lr-muted);
+    line-height: 1.55;
+  }
+  .lr-cert-btn {
+    margin-top: .5rem;
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    font-size: .82rem;
+    font-weight: 600;
+    color: var(--lr-navy);
+    background: transparent;
+    border: 1px solid var(--lr-line);
+    border-radius: 999px;
+    padding: .45rem .95rem;
+    cursor: pointer;
+    transition: background .2s ease, border-color .2s ease;
+  }
+  .lr-cert-btn:hover {
+    background: var(--lr-navy);
+    border-color: var(--lr-navy);
+    color: #fff;
+  }
+  .lr-cert-btn svg { width: 14px; height: 14px; }
+
+  /* ---------- Kegiatan: badge kategori ---------- */
+  .lr-activity-badge {
+    display: inline-block;
+    font-size: .7rem;
+    font-weight: 700;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    color: var(--lr-accent);
+    background: rgba(176, 141, 87, 0.12);
+    border-radius: 999px;
+    padding: .25rem .7rem;
+    margin-bottom: .6rem;
+  }
+
+  /* ---------- Artikel: hover lift + panah bergerak ---------- */
+  #artikel .project-card {
+    transition: box-shadow .2s ease, transform .2s ease;
+  }
+  #artikel .project-card:hover {
+    box-shadow: 0 12px 30px rgba(16, 26, 48, 0.08);
+    transform: translateY(-2px);
+  }
+  #artikel .project-link {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    transition: gap .2s ease;
+  }
+  #artikel .project-link:hover { gap: .55rem; }
+
+  /* ---------- Lightbox ---------- */
+  .lightbox-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 15, 15, 0.85);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    z-index: 999;
+  }
+  .lightbox-overlay.open { display: flex; }
+  .lightbox-overlay img {
+    max-width: 100%;
+    max-height: 88vh;
+    border-radius: 8px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+  }
+  .lightbox-close {
+    position: absolute;
+    top: 20px;
+    right: 24px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255,255,255,0.15);
+    color: #fff;
+    font-size: 20px;
+    line-height: 40px;
+    text-align: center;
+    cursor: pointer;
+  }
+  .lightbox-close:hover { background: rgba(255,255,255,0.3); }
+</style>
 </head>
 <body>
 
-<button class="nav-toggle" id="navToggle" aria-label="Buka menu" aria-expanded="false">
-  <span></span><span></span><span></span>
-</button>
-
-<aside class="sidebar" id="sidebar">
-  <div class="sidebar-top">
+<header class="site-header">
+  <div class="header-inner">
     <p class="brand">Leila Rafaluna Devany<span>.</span></p>
-    <p class="brand-role">Junior Web Developer</p>
+
+    <button class="nav-toggle" id="navToggle" aria-label="Buka menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+
+    <nav class="main-nav" id="mainNav">
+      <a href="#beranda" class="nav-link active">Beranda</a>
+      <a href="#tentang" class="nav-link">Tentang</a>
+      <a href="#profil" class="nav-link">Profil</a>
+      <a href="#pendidikan" class="nav-link">Pendidikan</a>
+      <a href="#pengalaman" class="nav-link">Pengalaman</a>
+      <a href="#keahlian" class="nav-link">Keahlian</a>
+      <a href="#proyek" class="nav-link">Proyek</a>
+      <a href="#sertifikat" class="nav-link">Sertifikat</a>
+      <a href="#kegiatan" class="nav-link">Kegiatan</a>
+      <a href="#artikel" class="nav-link">Artikel</a>
+      <a href="#kontak" class="nav-link">Kontak</a>
+      <a href="mailto:leiladvany@email.com" class="nav-cta">Hubungi saya</a>
+    </nav>
   </div>
-  <nav class="sidebar-nav">
-    <a href="#beranda" class="nav-link active">Beranda</a>
-    <a href="#tentang" class="nav-link">Tentang</a>
-    <a href="#keahlian" class="nav-link">Keahlian</a>
-    <a href="#proyek" class="nav-link">Proyek</a>
-    <a href="#kontak" class="nav-link">Kontak</a>
-  </nav>
-  <div class="sidebar-bottom">
-    <a href="mailto:leiladvany@email.com" class="sidebar-cta">Hubungi saya</a>
-  </div>
-</aside>
+</header>
 
 <main>
 
   <section id="beranda" class="hero">
-    <p class="hero-eyebrow">Uji Kompetensi — Skema Junior Web Developer</p>
-    <h1 class="hero-title">Saya membangun antarmuka web yang rapi, terstruktur, dan siap dipakai.</h1>
-    <p class="hero-sub">Fokus saya pada dasar-dasar yang kuat: markup yang bersih, tata letak yang responsif, dan kode yang mudah dirawat — baik untuk situs statis maupun aplikasi dengan basis data.</p>
-    <div class="hero-actions">
-      <a href="#proyek" class="btn btn-primary">Lihat proyek</a>
-      <a href="#kontak" class="btn btn-ghost">Kontak saya</a>
+    <div class="hero-grid">
+      <div class="hero-content">
+        <p class="hero-eyebrow reveal">Uji Kompetensi — Skema Junior Web Developer</p>
+        <h1 class="hero-title reveal delay-1">Saya mengembangkan website dengan desain yang rapi,fungsional, dan terstruktur.</h1>
+        <p class="hero-sub reveal delay-2">Saya adalah siswa Rekayasa Perangkat Lunak yang memiliki ketertarikan pada pengembangan website, frontend, backend, dan pengelolaan database. Saya terus mengembangkan kemampuan melalui berbagai proyek dan pengalaman praktik di bidang teknologi.</p>
+        <div class="hero-actions reveal delay-3">
+          <a href="#proyek" class="btn btn-primary">Lihat proyek</a>
+          <a href="#kontak" class="btn btn-ghost">Kontak saya</a>
+        </div>
+        <dl class="hero-stats reveal delay-4">
+          <div><dt>3</dt><dd>Proyek &amp; pengalaman praktik</dd></div>
+          <div><dt>HTML · CSS · JS</dt><dd>Front-end</dd></div>
+          <div><dt>PHP · Node.js · Express</dt><dd>Back-end</dd></div>
+        </dl>
+      </div>
+      <div class="hero-photo reveal delay-2">
+        <div class="photo-dots"></div>
+        <div class="photo-circle"></div>
+        <img src="assets/leila-photo.png" alt="Leila Rafaluna Devany" class="hero-photo-img">
+      </div>
     </div>
-    <dl class="hero-stats">
-      <div><dt>2</dt><dd>Proyek uji kompetensi</dd></div>
-      <div><dt>HTML · CSS · JS</dt><dd>Fondasi teknis</dd></div>
-      <div><dt>PHP · MySQL</dt><dd>Sisi server</dd></div>
-    </dl>
   </section>
 
   <section id="tentang" class="section">
-    <h2 class="section-title">Tentang saya</h2>
+    <h2 class="section-title scroll-reveal">Tentang saya</h2>
     <div class="about-grid">
-      <p class="about-text">Saya baru memulai karier di bidang pengembangan web, dan sertifikasi ini adalah langkah pertama saya untuk membuktikan kompetensi secara formal. Saya mengerjakan setiap proyek dengan memperhatikan struktur folder yang rapi, penamaan yang konsisten, serta prinsip pemrograman terstruktur — bukan sekadar membuat tampilan yang terlihat baik.</p>
-      <div class="about-facts">
-        <div class="fact"><span class="fact-label">Domisili</span><span class="fact-value">Madiun, Jawa Timur</span></div>
-        <div class="fact"><span class="fact-label">Fokus</span><span class="fact-value">Front-end &amp; back-end dasar</span></div>
-        <div class="fact"><span class="fact-label">Status</span><span class="fact-value">Peserta Uji Serkom</span></div>
+      <p class="about-text scroll-reveal">Saya adalah siswa Rekayasa Perangkat Lunak yang memiliki ketertarikan pada pengembangan web. Saya terus mengembangkan kemampuan melalui pembelajaran, proyek, dan pengalaman praktik. Saya memiliki kemampuan dalam membangun website dengan memperhatikan tampilan, responsivitas, dan pengalaman pengguna.</p>
+      <div class="about-facts scroll-reveal">
+        <div class="fact"><span class="fact-label">Domisili</span><span class="fact-value"><a href="https://maps.app.goo.gl/7uxAd4fqk8AxFxyg6" target="_blank" rel="noopener">Jl. Niken Gandini No.98, Plampitan, Setono, Kec. Jenangan, Kabupaten Ponorogo, Jawa Timur</a></span></div>
+        <div class="fact"><span class="fact-label">Fokus</span><span class="fact-value">Front-end &amp; back-end</span></div>
+        <div class="fact"><span class="fact-label">Keahlian</span><span class="fact-value">HTML · CSS · JavaScript · PHP · MySQL</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== PROFIL PROFESIONAL ===== -->
+  <section id="profil" class="section">
+    <h2 class="section-title scroll-reveal">Profil Profesional</h2>
+    <div class="about-grid">
+      <p class="about-text scroll-reveal">Siswa Rekayasa Perangkat Lunak yang memiliki ketertarikan pada bidang web development. Memiliki kemampuan dasar dalam pengembangan website, baik front-end maupun back-end, serta terus mengembangkan keterampilan melalui berbagai proyek dan pengalaman praktik.</p>
+      <div class="about-facts scroll-reveal">
+        <div class="fact"><span class="fact-label">Jabatan / Peran</span><span class="fact-value">Junior Web Developer (siswa PKL)</span></div>
+        <div class="fact"><span class="fact-label">Instansi</span><span class="fact-value">SMKN 1 JENANGAN</span></div>
+        <div class="fact"><span class="fact-label">Bidang Ditekuni</span><span class="fact-value">Pengembangan web front-end &amp; back-end</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== PENDIDIKAN — tampilan timeline ===== -->
+  <section id="pendidikan" class="section">
+    <p class="lr-eyebrow scroll-reveal">Riwayat</p>
+    <h2 class="section-title scroll-reveal">Pendidikan</h2>
+    <div class="lr-timeline scroll-reveal">
+      <div class="lr-timeline-item">
+        <p class="lr-timeline-tag">2024 — Sekarang</p>
+        <h3 class="lr-timeline-title">SMKN 1 Jenangan</h3>
+        <p class="lr-timeline-desc">Jurusan Rekayasa Perangkat Lunak.</p>
+      </div>
+      <div class="lr-timeline-item">
+        <p class="lr-timeline-tag">2021 — 2024</p>
+        <h3 class="lr-timeline-title">SMPN 1 Jetis</h3>
+      </div>
+      <div class="lr-timeline-item">
+        <p class="lr-timeline-tag">2015 — 2021</p>
+        <h3 class="lr-timeline-title">MIM 4 JETIS</h3>
+      </div>
+      <div class="lr-timeline-item">
+        <p class="lr-timeline-tag">2012 — 2015</p>
+        <h3 class="lr-timeline-title">TK AISYIYAH</h3>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== PENGALAMAN — tampilan timeline ===== -->
+  <section id="pengalaman" class="section">
+    <p class="lr-eyebrow scroll-reveal">Rekam Jejak</p>
+    <h2 class="section-title scroll-reveal">Pengalaman</h2>
+    <div class="lr-timeline scroll-reveal">
+      <div class="lr-timeline-item">
+        <p class="lr-timeline-tag">Praktik Kerja Lapangan</p>
+        <h3 class="lr-timeline-title">UPT Latkesmas Murnajati</h3>
+        <p class="lr-timeline-desc">Mengembangkan website PPID menggunakan PHP dengan framework CodeIgniter 4. Berkontribusi dalam pembuatan database, antarmuka website, fitur CRUD informasi publik, form permohonan informasi dan keberatan, serta melakukan pengujian sistem.</p>
       </div>
     </div>
   </section>
 
   <section id="keahlian" class="section">
-    <h2 class="section-title">Keahlian</h2>
+    <h2 class="section-title scroll-reveal">Keahlian</h2>
     <div class="skills-grid">
-      <div class="skill-card">
+      <div class="skill-card scroll-reveal">
         <p class="skill-name">HTML &amp; CSS</p>
-        <p class="skill-desc">Markup semantik dan tata letak responsif tanpa bergantung pada framework.</p>
+        <p class="skill-desc">Membangun tampilan website yang terstruktur, responsif, dan nyaman digunakan.</p>
       </div>
-      <div class="skill-card">
+      <div class="skill-card scroll-reveal">
         <p class="skill-name">JavaScript</p>
-        <p class="skill-desc">Interaksi antarmuka: navigasi, validasi form, dan efek dinamis ringan.</p>
+        <p class="skill-desc">Mengembangkan interaksi dan fitur dinamis pada website.</p>
       </div>
-      <div class="skill-card">
+      <div class="skill-card scroll-reveal">
         <p class="skill-name">PHP &amp; MySQL</p>
-        <p class="skill-desc">Query terstruktur, koneksi basis data, dan operasi CRUD dasar.</p>
+        <p class="skill-desc">Membuat fitur berbasis server serta mengelola dan mengolah data dalam database.</p>
       </div>
-      <div class="skill-card">
-        <p class="skill-name">Struktur proyek</p>
-        <p class="skill-desc">Pemisahan file berdasarkan fungsi: konfigurasi, tampilan, dan aset.</p>
+      <div class="skill-card scroll-reveal">
+        <p class="skill-name">Node.js &amp; Express.js</p>
+        <p class="skill-desc">Membangun REST API dan mengembangkan fungsi backend dasar.</p>
+      </div>
+      <div class="skill-card scroll-reveal">
+        <p class="skill-name">PostgreSQL</p>
+        <p class="skill-desc">Mengelola database serta melakukan operasi CRUD pada data.</p>
+      </div>
+      <div class="skill-card scroll-reveal">
+        <p class="skill-name">Git &amp; GitHub</p>
+        <p class="skill-desc">Mengelola kode program dan mendukung proses pengembangan proyek.</p>
       </div>
     </div>
   </section>
 
   <section id="proyek" class="section">
-    <h2 class="section-title">Proyek</h2>
+    <h2 class="section-title scroll-reveal">Proyek</h2>
     <div class="project-list">
-      <article class="project-card">
+      <article class="project-card scroll-reveal">
         <div class="project-info">
-          <p class="project-tag">Website statis</p>
-          <h3 class="project-name">Web profil ini</h3>
-          <p class="project-desc">Halaman portofolio pribadi yang sedang Anda lihat: HTML, CSS, dan JavaScript murni, dengan navigasi sidebar dan tata letak yang responsif hingga ukuran layar ponsel.</p>
+          <p class="project-tag">WEBSITE PORTOFOLIO</p>
+          <h3 class="project-name">Personal Portfolio Website</h3>
+          <p class="project-desc">Website portofolio pribadi yang dirancang untuk menampilkan profil, keahlian, pengalaman, dan hasil proyek dalam tampilan yang sederhana dan responsif.
+            Teknologi: HTML · CSS · JavaScript</p>
         </div>
       </article>
-      <article class="project-card">
+      <article class="project-card scroll-reveal">
         <div class="project-info">
-          <p class="project-tag">Website dinamis</p>
+          <p class="project-tag">E-COMMERCE WEBSITE</p>
           <h3 class="project-name">Laluna co. — Toko Rajut</h3>
-          <p class="project-desc">Katalog produk rajutan tangan dengan filter kategori, halaman detail produk, form kontak, dan panel admin untuk mengelola data produk — dibangun dengan PHP dan MySQL.</p>
-          <a href="../toko-rajut/index.php" class="project-link">Kunjungi website usaha &rarr;</a>
+          <p class="project-desc">Website toko rajut dengan katalog produk, filter kategori, halaman detail produk, form kontak, serta panel admin untuk mengelola data produk.
+           Teknologi: PHP · MySQL · HTML · CSS · JavaScript</p>
+          <a href="http://localhost:8000/index.php" target="_blank" rel="noopener" class="project-link">Kunjungi website →</a>
+        </div>
+      </article>
+      <article class="project-card scroll-reveal">
+        <div class="project-info">
+          <p class="project-tag">WEBSITE INSTANSI PEMERINTAH</p>
+          <h3 class="project-name">PPID UPT Latkesmas Murnajati</h3>
+          <p class="project-desc">Website Pejabat Pengelola Informasi dan Dokumentasi (PPID) untuk UPT Latkesmas Murnajati, dikerjakan selama masa Praktik Kerja Lapangan (PKL).
+          Teknologi: PHP (CodeIgniter 4) · CSS</p>
         </div>
       </article>
     </div>
   </section>
 
-  <section id="kontak" class="section section-contact">
-    <h2 class="section-title">Kontak</h2>
-    <p class="contact-lead">Terbuka untuk kesempatan magang atau posisi entry-level sebagai web developer.</p>
-    <div class="contact-grid">
-      <a href="mailto:leiladvany@gmail.com" class="contact-item">
-        <span class="contact-label">Email</span>
-        <span class="contact-value">leiladvany@gmail.com</span>
-      </a>
-      <a href="tel:+6281234567890" class="contact-item">
-        <span class="contact-label">Telepon</span>
-        <span class="contact-value">+62 889 8950 5932</span>
-      </a>
-      <a href="https://github.com/" class="contact-item">
-        <span class="contact-label">GitHub</span>
-        <span class="contact-value">github.com/leiladvany</span>
-      </a>
-      <a href="https://linkedin.com/" class="contact-item">
-        <span class="contact-label">LinkedIn</span>
-        <span class="contact-value">linkedin.com/in/leiladvany</span>
-      </a>
+  <!-- ===== SERTIFIKAT / PRESTASI — kartu bergaya sertifikat ===== -->
+  <section id="sertifikat" class="section">
+    <p class="lr-eyebrow scroll-reveal">Bukti Kompetensi</p>
+    <h2 class="section-title scroll-reveal">Sertifikat &amp; Prestasi</h2>
+    <div class="lr-cert-grid scroll-reveal">
+
+      <div class="lr-cert-card">
+        <div class="lr-cert-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="8" r="6"></circle>
+            <path d="M8.5 13.5 7 22l5-3 5 3-1.5-8.5"></path>
+          </svg>
+        </div>
+        <p class="lr-cert-name">Sertifikat Praktik Kerja Lapangan (PKL)</p>
+        <p class="lr-cert-meta">UPT Latkesmas Murnajati · 2026<br>Bukti telah menyelesaikan kegiatan Praktik Kerja Lapangan di bidang pengembangan website.</p>
+        <button type="button" class="lr-cert-btn" data-lightbox-trigger data-src="assets/digitalent.jpg" data-alt="Sertifikat Praktik Kerja Lapangan">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+          Lihat sertifikat
+        </button>
+      </div>
+
+      <div class="lr-cert-card">
+        <div class="lr-cert-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="8" r="6"></circle>
+            <path d="M8.5 13.5 7 22l5-3 5 3-1.5-8.5"></path>
+          </svg>
+        </div>
+        <p class="lr-cert-name">Pelatihan Digitalent</p>
+        <p class="lr-cert-meta">Fundamental of Assistant Web Developer – Nasional · 2026<br>Pelatihan untuk meningkatkan kompetensi dasar dalam pengembangan website.</p>
+        <button type="button" class="lr-cert-btn" data-lightbox-trigger data-src="assets/digitalent.jpg" data-alt="Sertifikat Pelatihan Digitalent">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+          Lihat sertifikat
+        </button>
+      </div>
+
     </div>
   </section>
 
-  <footer class="site-footer">
-    <p>&copy; 2026 Leila Rafaluna Devany. Dibuat untuk Uji Sertifikasi Kompetensi — Junior Web Developer.</p>
-  </footer>
+  <!-- ===== KEGIATAN — dengan badge kategori ===== -->
+  <section id="kegiatan" class="section">
+    <h2 class="section-title scroll-reveal">Kegiatan</h2>
+    <div class="project-list">
+      <article class="project-card scroll-reveal">
+        <div class="project-info">
+          <span class="lr-activity-badge">Workshop</span>
+          <h3 class="project-name">Pelatihan Digitalent</h3>
+          <p class="project-desc">Mengikuti pelatihan Fundamental of Assistant Web Developer – Nasional untuk meningkatkan kemampuan dasar dalam pengembangan website.</p>
+        </div>
+      </article>
+      <article class="project-card scroll-reveal">
+        <div class="project-info">
+          <span class="lr-activity-badge">Kegiatan Belajar</span>
+          <h3 class="project-name">Pengembangan Website</h3>
+          <p class="project-desc">Mengerjakan berbagai proyek website sebagai bagian dari pembelajaran Rekayasa Perangkat Lunak, termasuk pengembangan website toko online Lalunaco dengan PHP dan PostgreSQL serta website profil pribadi menggunakan HTML, CSS, dan JavaScript.</p>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- ===== ARTIKEL / BLOG ===== -->
+  <section id="artikel" class="section">
+    <h2 class="section-title scroll-reveal">Artikel</h2>
+    <div class="project-list">
+      <article class="project-card scroll-reveal">
+        <div class="project-info">
+          <p class="project-tag">TUTORIAL</p>
+          <h3 class="project-name">Membuat Website dengan PHP dan PostgreSQL</h3>
+          <p class="project-desc">Tuliskan ringkasan singkat isi artikel atau tutorial di sini.</p>
+          <!-- Ganti href di bawah dengan link/halaman artikel asli kamu -->
+          <a href="#artikel" class="project-link">Baca selengkapnya →</a>
+        </div>
+      </article>
+      <article class="project-card scroll-reveal">
+        <div class="project-info">
+          <p class="project-tag">PENGALAMAN</p>
+          <h3 class="project-name">Judul artikel</h3>
+          <p class="project-desc">Tuliskan cerita atau pengalaman belajar yang ingin dibagikan.</p>
+          <!-- Ganti href di bawah dengan link/halaman artikel asli kamu -->
+          <a href="#artikel" class="project-link">Baca selengkapnya →</a>
+        </div>
+      </article>
+    </div>
+  </section>
 
 </main>
 
+<footer class="site-footer" id="kontak">
+  <div class="footer-inner">
+    <div>
+      <p class="footer-brand">Leila Rafaluna Devany<span>.</span></p>
+      <p class="footer-desc">Junior Web Developer yang tertarik pada pengembangan front-end dan back-end, terbuka untuk kesempatan magang atau posisi entry-level.</p>
+      <div class="footer-social">
+        <a href="https://github.com/" target="_blank" rel="noopener" aria-label="GitHub Leila">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 .5C5.73.5.5 5.73.5 12c0 5.08 3.29 9.39 7.86 10.91.57.1.79-.25.79-.55 0-.27-.01-1.16-.02-2.11-3.2.7-3.88-1.36-3.88-1.36-.52-1.33-1.28-1.68-1.28-1.68-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.03 1.76 2.7 1.25 3.36.96.1-.75.4-1.25.73-1.54-2.56-.29-5.25-1.28-5.25-5.7 0-1.26.45-2.29 1.18-3.09-.12-.29-.51-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11.1 11.1 0 0 1 5.79 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.8 1.18 1.83 1.18 3.09 0 4.43-2.7 5.41-5.27 5.7.42.36.78 1.07.78 2.16 0 1.56-.01 2.82-.01 3.2 0 .31.21.66.8.55A11.5 11.5 0 0 0 23.5 12C23.5 5.73 18.27.5 12 .5z"/>
+          </svg>
+        </a>
+        <a href="https://linkedin.com/" target="_blank" rel="noopener" aria-label="LinkedIn Leila">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M20.45 20.45h-3.55v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.36V9h3.41v1.56h.05c.47-.89 1.63-1.85 3.36-1.85 3.6 0 4.27 2.37 4.27 5.45v6.29zM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13zM7.12 20.45H3.56V9h3.56v11.45z"/>
+          </svg>
+        </a>
+      </div>
+    </div>
+    <div class="footer-contact">
+      <p class="footer-heading">Kontak</p>
+      <a href="https://mail.google.com/mail/?view=cm&fs=1&to=leiladvany02@gmail.com" target="_blank" rel="noopener">leiladvany02@gmail.com</a>
+        <p><a href="https://wa.me/6288989505932" target="_blank" rel="noopener">+62-889-8950-5932</a></p>
+    </div>
+  </div>
+  <p class="footer-copy">&copy; 2026 Leila Rafaluna Devany. Dibuat untuk Uji Sertifikasi Kompetensi — Junior Web Developer.</p>
+</footer>
+
+<!-- Lightbox untuk foto sertifikat -->
+<div class="lightbox-overlay" id="certLightbox">
+  <button type="button" class="lightbox-close" id="certLightboxClose" aria-label="Tutup">&times;</button>
+  <img id="certLightboxImg" src="" alt="">
+</div>
+
 <script src="js/script.js"></script>
+<script>
+  // Lightbox sederhana untuk foto sertifikat — tidak bergantung pada script.js
+  (function () {
+    var overlay = document.getElementById('certLightbox');
+    var img = document.getElementById('certLightboxImg');
+    var closeBtn = document.getElementById('certLightboxClose');
+
+    function openLightbox(src, alt) {
+      img.src = src;
+      img.alt = alt || '';
+      overlay.classList.add('open');
+    }
+    function closeLightbox() {
+      overlay.classList.remove('open');
+      img.src = '';
+    }
+
+    document.querySelectorAll('[data-lightbox]').forEach(function (el) {
+      el.addEventListener('click', function (e) {
+        e.preventDefault();
+        openLightbox(el.getAttribute('href'), el.querySelector('img') ? el.querySelector('img').alt : '');
+      });
+    });
+    document.querySelectorAll('[data-lightbox-trigger]').forEach(function (el) {
+      el.addEventListener('click', function () {
+        openLightbox(el.getAttribute('data-src'), el.getAttribute('data-alt'));
+      });
+    });
+
+    closeBtn.addEventListener('click', closeLightbox);
+    overlay.addEventListener('click', function (e) {
+      if (e.target === overlay) closeLightbox();
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') closeLightbox();
+    });
+  })();
+</script>
 </body>
 </html>

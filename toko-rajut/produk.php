@@ -1,5 +1,9 @@
 <?php
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
 require_once __DIR__ . '/config.php';
+
+$kategoriNav = $pdo->query('SELECT id, nama, slug FROM kategori ORDER BY nama')->fetchAll();
 
 $kategoriSlug = isset($_GET['kategori']) ? trim($_GET['kategori']) : '';
 $kata = isset($_GET['q']) ? trim($_GET['q']) : '';
@@ -60,7 +64,7 @@ require __DIR__ . '/includes/header.php';
       <?php foreach ($produkList as $p): ?>
         <article class="product-card">
           <a href="produk_detail.php?slug=<?= h($p['slug']) ?>" class="product-thumb">
-            <img src="assets/<?= h($p['gambar']) ?>" alt="<?= h($p['nama']) ?>" loading="lazy">
+            <img src="assets/<?= h(first_image($p['gambar'])) ?>" alt="<?= h($p['nama']) ?>" loading="lazy">
           </a>
           <div class="product-body">
             <p class="product-kategori"><?= h($p['kategori_nama']) ?></p>

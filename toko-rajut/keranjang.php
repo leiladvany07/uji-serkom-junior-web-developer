@@ -5,21 +5,30 @@ require_once __DIR__ . '/config.php';
 // Tambah produk ke keranjang
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tambah_id'])) {
     $id = (int) $_POST['tambah_id'];
+    $warna = trim($_POST['warna'] ?? '');
     $jumlah = max(1, (int) ($_POST['jumlah'] ?? 1));
+    $key = $id . '::' . $warna;
     if (!isset($_SESSION['keranjang'])) $_SESSION['keranjang'] = [];
-    $_SESSION['keranjang'][$id] = ($_SESSION['keranjang'][$id] ?? 0) + $jumlah;
-    header('Location: keranjang.php');
+    $_SESSION['keranjang'][$key] = ($_SESSION['keranjang'][$key] ?? 0) + $jumlah;
+
+    $kembali = $_POST['kembali'] ?? '';
+    // Hanya izinkan redirect ke halaman lokal produk_detail.php demi keamanan.
+    if (is_string($kembali) && preg_match('/^produk_detail\.php\?slug=[a-z0-9\-]+(&ditambahkan=1)?$/', $kembali)) {
+        header('Location: ' . $kembali);
+    } else {
+        header('Location: keranjang.php');
+    }
     exit;
 }
 
 // Update jumlah item di keranjang
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_id'])) {
-    $id = (int) $_POST['update_id'];
+    $key = (string) $_POST['update_id'];
     $jumlah = (int) ($_POST['jumlah'] ?? 1);
     if ($jumlah <= 0) {
-        unset($_SESSION['keranjang'][$id]);
+        unset($_SESSION['keranjang'][$key]);
     } else {
-        $_SESSION['keranjang'][$id] = $jumlah;
+        $_SESSION['keranjang'][$key] = $jumlah;
     }
     header('Location: keranjang.php');
     exit;
@@ -27,7 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_id'])) {
 
 // Hapus item dari keranjang
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['hapus_id'])) {
-    unset($_SESSION['keranjang'][(int) $_POST['hapus_id']]);
+    unset($_SESSION['keranjang'][(string) $_POST['hapus_id']]);
     header('Location: keranjang.php');
     exit;
 }
@@ -37,18 +46,28 @@ $items = [];
 $total = 0;
 
 if (!empty($keranjang)) {
-    $ids = array_keys($keranjang);
+    $keyInfo = [];
+    foreach (array_keys($keranjang) as $key) {
+        $parts = explode('::', $key, 2);
+        $keyInfo[$key] = ['id' => (int) $parts[0], 'warna' => $parts[1] ?? ''];
+    }
+    $ids = array_values(array_unique(array_column($keyInfo, 'id')));
     $placeholders = implode(',', array_fill(0, count($ids), '?'));
     $stmt = $pdo->prepare("SELECT * FROM produk WHERE id IN ($placeholders)");
     $stmt->execute($ids);
-    $produkList = $stmt->fetchAll();
+    $produkById = [];
+    foreach ($stmt->fetchAll() as $p) { $produkById[$p['id']] = $p; }
 
-    foreach ($produkList as $p) {
-        $jumlah = $keranjang[$p['id']];
+    foreach ($keranjang as $key => $jumlah) {
+        $id = $keyInfo[$key]['id'];
+        if (!isset($produkById[$id])) continue;
+        $p = $produkById[$id];
         $subtotal = $p['harga'] * $jumlah;
         $total += $subtotal;
         $items[] = [
+            'key' => $key,
             'produk' => $p,
+            'warna' => $keyInfo[$key]['warna'],
             'jumlah' => $jumlah,
             'subtotal' => $subtotal,
         ];
@@ -73,10 +92,13 @@ require __DIR__ . '/includes/header.php';
               <img src="assets/<?= h(first_image($p['gambar'])) ?>" alt="<?= h($p['nama']) ?>">
             </a>
             <div class="cart-item-info">
-              <h3 class="cart-item-nama"><?= h($p['nama']) ?></h3>
+              <h3 class="cart-item-nama">
+                <?= h($p['nama']) ?>
+                <?php if ($item['warna'] !== ''): ?><span class="cart-item-warna">(<?= h($item['warna']) ?>)</span><?php endif; ?>
+              </h3>
               <p class="cart-item-harga"><?= format_rupiah($p['harga']) ?></p>
               <form method="post" action="keranjang.php" class="cart-item-qty-form">
-                <input type="hidden" name="update_id" value="<?= $p['id'] ?>">
+                <input type="hidden" name="update_id" value="<?= h($item['key']) ?>">
                 <button type="submit" name="jumlah" value="<?= $item['jumlah'] - 1 ?>" class="qty-btn">&minus;</button>
                 <span class="qty-value"><?= $item['jumlah'] ?></span>
                 <button type="submit" name="jumlah" value="<?= $item['jumlah'] + 1 ?>" class="qty-btn">&plus;</button>
@@ -85,7 +107,7 @@ require __DIR__ . '/includes/header.php';
             <div class="cart-item-side">
               <p class="cart-item-subtotal"><?= format_rupiah($item['subtotal']) ?></p>
               <form method="post" action="keranjang.php">
-                <input type="hidden" name="hapus_id" value="<?= $p['id'] ?>">
+                <input type="hidden" name="hapus_id" value="<?= h($item['key']) ?>">
                 <button type="submit" class="cart-item-hapus">Hapus</button>
               </form>
             </div>

@@ -48,7 +48,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <input type="password" name="password" required>
     </label>
     <button type="submit" class="btn btn-primary">Masuk</button>
-    <p class="admin-hint">Akun default: admin / admin123 — segera ganti setelah login pertama.</p>
     <a href="../index.php" class="admin-back">&larr; Kembali ke toko</a>
   </form>
 </div>
