@@ -62,6 +62,15 @@ if ($langsung) {
     }
 }
 
+$pelangganData = null;
+if (!empty($_SESSION['pelanggan_id'])) {
+    $stmtP = $pdo->prepare('SELECT * FROM pelanggan WHERE id = ?');
+    $stmtP->execute([$_SESSION['pelanggan_id']]);
+    $pelangganData = $stmtP->fetch();
+}
+
+$statusPembayaranOptions = ['Transfer Bank', 'QRIS', 'E-Wallet (DANA/OVO/GoPay)', 'COD (Bayar di Tempat)'];
+
 $errors = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -70,20 +79,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email'] ?? '');
     $alamat = trim($_POST['alamat'] ?? '');
     $catatan = trim($_POST['catatan'] ?? '');
+    $pembayaran = trim($_POST['pembayaran'] ?? '');
 
     if ($nama === '') $errors[] = 'Nama wajib diisi.';
     if ($telepon === '') $errors[] = 'Nomor telepon wajib diisi.';
     if ($alamat === '') $errors[] = 'Alamat pengiriman wajib diisi.';
     if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = 'Format email tidak valid.';
+    if (!in_array($pembayaran, $statusPembayaranOptions, true)) $errors[] = 'Pilih metode pembayaran.';
 
     if (empty($errors)) {
         $kode = 'LLC-' . date('ymd') . '-' . strtoupper(substr(uniqid(), -5));
 
         $pdo->beginTransaction();
         try {
-            $stmt = $pdo->prepare('INSERT INTO transaksi (kode, nama, telepon, email, alamat, catatan, total) VALUES (?,?,?,?,?,?,?) RETURNING id');
-            $stmt->execute([$kode, $nama, $telepon, $email ?: null, $alamat, $catatan ?: null, $total]);
+            $stmt = $pdo->prepare('INSERT INTO transaksi (kode, nama, telepon, email, alamat, catatan, metode_pembayaran, total, pelanggan_id) VALUES (?,?,?,?,?,?,?,?,?) RETURNING id');
+            $stmt->execute([$kode, $nama, $telepon, $email ?: null, $alamat, $catatan ?: null, $pembayaran, $total, $_SESSION['pelanggan_id'] ?? null]);
             $transaksiId = $stmt->fetchColumn();
+
+            // Kalau lagi login, simpan/perbarui alamat default di akun
+            // biar checkout berikutnya otomatis terisi lagi.
+            if (!empty($_SESSION['pelanggan_id'])) {
+                $stmtAlamat = $pdo->prepare('UPDATE pelanggan SET alamat = ? WHERE id = ?');
+                $stmtAlamat->execute([$alamat, $_SESSION['pelanggan_id']]);
+            }
 
             $stmtItem = $pdo->prepare('INSERT INTO transaksi_item (transaksi_id, produk_id, nama_produk, warna, harga, jumlah, subtotal) VALUES (?,?,?,?,?,?,?)');
             $stmtStok = $pdo->prepare('UPDATE produk SET stok = GREATEST(stok - ?, 0) WHERE id = ?');
@@ -127,22 +145,28 @@ require __DIR__ . '/includes/header.php';
   <div class="contact-layout">
     <form class="contact-form" method="post" action="checkout.php" novalidate>
       <label>Nama Penerima
-        <input type="text" name="nama" value="<?= h($_POST['nama'] ?? '') ?>" required>
+        <input type="text" name="nama" value="<?= h($_POST['nama'] ?? $pelangganData['nama'] ?? '') ?>" required>
       </label>
       <label>Nomor Telepon / WhatsApp
-        <input type="text" name="telepon" value="<?= h($_POST['telepon'] ?? '') ?>" required>
+        <input type="text" name="telepon" value="<?= h($_POST['telepon'] ?? $pelangganData['telepon'] ?? '') ?>" required>
       </label>
       <label>Email (opsional)
-        <input type="email" name="email" value="<?= h($_POST['email'] ?? '') ?>">
+        <input type="email" name="email" value="<?= h($_POST['email'] ?? $pelangganData['email'] ?? '') ?>">
       </label>
       <label>Alamat Pengiriman
-        <textarea name="alamat" rows="3" required><?= h($_POST['alamat'] ?? '') ?></textarea>
+        <textarea name="alamat" rows="3" required><?= h($_POST['alamat'] ?? $pelangganData['alamat'] ?? '') ?></textarea>
       </label>
+      <?php if ($pelangganData): ?><p class="checkout-note" style="margin-top:-0.6rem;">Alamat ini otomatis tersimpan ke akun kamu buat belanja berikutnya.</p><?php endif; ?>
       <label>Catatan (opsional)
         <textarea name="catatan" rows="2"><?= h($_POST['catatan'] ?? '') ?></textarea>
       </label>
        <label>Metode Pembayaran
-        <textarea name="pembayaran" rows="2"><?= h($_POST['pembayaran'] ?? '') ?></textarea>
+        <select name="pembayaran" required>
+          <option value="" disabled <?= empty($_POST['pembayaran']) ? 'selected' : '' ?>>Pilih metode pembayaran</option>
+          <?php foreach ($statusPembayaranOptions as $opsi): ?>
+            <option value="<?= h($opsi) ?>" <?= ($_POST['pembayaran'] ?? '') === $opsi ? 'selected' : '' ?>><?= h($opsi) ?></option>
+          <?php endforeach; ?>
+        </select>
       </label>
       <button type="submit" class="btn btn-primary">Buat Pesanan</button>
     </form>

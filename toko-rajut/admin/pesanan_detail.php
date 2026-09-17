@@ -224,6 +224,12 @@ $totalBaruPesan = (int) $pdo->query("SELECT COUNT(*) FROM pesan WHERE status = '
               <span class="contact-label">Alamat Pengiriman</span>
               <span class="contact-value"><?= nl2br(h($transaksi['alamat'])) ?></span>
             </div>
+            <?php if (!empty($transaksi['metode_pembayaran'])): ?>
+            <div class="contact-item">
+              <span class="contact-label">Metode Pembayaran</span>
+              <span class="contact-value"><?= h($transaksi['metode_pembayaran']) ?></span>
+            </div>
+            <?php endif; ?>
             <?php if (!empty($transaksi['catatan'])): ?>
             <div class="contact-item">
               <span class="contact-label">Catatan</span>

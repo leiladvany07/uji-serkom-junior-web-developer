@@ -257,7 +257,19 @@ button,input,select,textarea{font-family:inherit;font-size:1rem;}
 .contact-layout{display:grid;grid-template-columns:1.4fr 1fr;gap:2.2rem;}
 .contact-form{display:flex;flex-direction:column;gap:1rem;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:1.6rem;}
 .contact-form label{display:flex;flex-direction:column;gap:0.4rem;font-size:0.85rem;color:var(--muted);}
-.contact-form input,.contact-form textarea{padding:0.65rem 0.85rem;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--ink);}
+.contact-form input,.contact-form textarea,.contact-form select{padding:0.65rem 0.85rem;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--ink);font-family:inherit;font-size:0.92rem;}
+.contact-form select{
+  appearance:none;-webkit-appearance:none;-moz-appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23A8623B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat:no-repeat;
+  background-position:right 0.85rem center;
+  padding-right:2.4rem;
+  cursor:pointer;
+}
+.contact-form select:hover{border-color:var(--clay);}
+.contact-form input:focus,.contact-form textarea:focus,.contact-form select:focus{
+  outline:none;border-color:var(--clay);box-shadow:0 0 0 3px rgba(168,98,59,0.15);
+}
 .form-success{background:#E3ECD9;color:var(--forest-2);padding:0.75rem 0.9rem;border-radius:6px;font-size:0.88rem;}
 .form-errors{background:#F6E2DC;color:var(--clay-dark);padding:0.75rem 0.9rem;border-radius:6px;font-size:0.85rem;list-style:none;}
 .contact-info{display:flex;flex-direction:column;gap:1rem;}
@@ -698,6 +710,52 @@ select.status-badge{
 .riwayat-head{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1.1rem;padding-bottom:1.1rem;border-bottom:1px solid var(--line);}
 
 .btn-icon-only{display:inline-flex;align-items:center;justify-content:center;padding:0.8rem;width:48px;height:48px;flex-shrink:0;}
+
+/* ===== BERANDA — REFRESH (trust bar, badge produk, rating testimoni) ===== */
+.hero-cta .btn-outline{border-color:var(--forest);color:var(--forest);}
+.hero-cta .btn-outline:hover{background:var(--forest);color:#fff;}
+
+.trust-bar{
+  display:flex;flex-wrap:wrap;gap:1.6rem 2.2rem;
+  padding:1.3rem 0;margin-bottom:0.5rem;
+  border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+}
+.trust-item{display:flex;align-items:center;gap:0.6rem;color:var(--forest);font-size:0.85rem;font-weight:600;}
+.trust-item svg{color:var(--clay);flex-shrink:0;}
+
+.product-thumb{position:relative;}
+.product-thumb img{transition:transform .35s ease;}
+.product-card:hover .product-thumb img{transform:scale(1.05);}
+.product-badge{
+  position:absolute;top:0.7rem;left:0.7rem;
+  background:var(--forest);color:#fff;font-size:0.68rem;font-weight:700;
+  padding:0.25rem 0.6rem;border-radius:20px;
+}
+.product-card{box-shadow:var(--shadow-sm);}
+.product-card:hover{box-shadow:var(--shadow-md);}
+
+.about-point{flex-direction:row;align-items:flex-start;gap:0.9rem;}
+.point-icon{
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  width:40px;height:40px;border-radius:50%;
+  background:var(--accent-soft);color:var(--clay-dark);
+}
+.about-point > div{display:flex;flex-direction:column;gap:0.15rem;}
+
+.testimoni-card{box-shadow:var(--shadow-sm);position:relative;padding-top:1.8rem;}
+.testimoni-stars{color:var(--clay);letter-spacing:0.15em;font-size:0.85rem;}
+.testimoni-card::before{
+  content:"\201C";
+  position:absolute;top:0.4rem;right:1.1rem;
+  font-family:var(--font-display);font-size:3rem;line-height:1;
+  color:var(--line);
+}
+
+.order-step{box-shadow:var(--shadow-sm);transition:box-shadow .15s ease,transform .15s ease;}
+.order-step:hover{box-shadow:var(--shadow-md);transform:translateY(-2px);}
+
+.visit-map{box-shadow:var(--shadow-sm);}
+.visit-info .contact-item{box-shadow:var(--shadow-sm);}
 
 /* ===== RESPONSIVE — TABLET (di bawah 900px) ===== */
 @media (max-width:900px){

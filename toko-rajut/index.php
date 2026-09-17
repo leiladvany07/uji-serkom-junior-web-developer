@@ -21,6 +21,7 @@ require __DIR__ . '/includes/header.php';
       </form>
       <div class="hero-cta reveal">
         <a href="https://api.whatsapp.com/send/?phone=6288989505932&text=Halo%20Lalunaco%2C%20saya%20mau%20tanya%20produk" class="btn btn-primary" target="_blank" rel="noopener">Konsultasi via WhatsApp</a>
+        <a href="produk.php" class="btn btn-outline">Lihat Katalog</a>
       </div>
     </div>
 
@@ -59,6 +60,25 @@ require __DIR__ . '/includes/header.php';
   </div>
 </section>
 
+<section class="trust-bar">
+  <div class="trust-item">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l1.8 5.6H20l-4.8 3.5 1.8 5.6-4.9-3.5-4.9 3.5 1.8-5.6L4.4 7.6h6.2z"/></svg>
+    <span>100% dirajut tangan</span>
+  </div>
+  <div class="trust-item">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>
+    <span>Warna & ukuran custom</span>
+  </div>
+  <div class="trust-item">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    <span>Fast response via WhatsApp</span>
+  </div>
+  <div class="trust-item">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="7" width="15" height="13" rx="2"/><path d="M16 10h3l4 4v3a2 2 0 0 1-2 2h-1"/><circle cx="5.5" cy="20" r="1.5"/><circle cx="17.5" cy="20" r="1.5"/></svg>
+    <span>Dikirim ke seluruh Indonesia</span>
+  </div>
+</section>
+
 <?php if (!empty($produkPilihan)): ?>
 <section class="section featured-section">
   <div class="featured-heading">
@@ -66,10 +86,11 @@ require __DIR__ . '/includes/header.php';
     <a href="produk.php" class="featured-link">Lihat semua produk &rarr;</a>
   </div>
   <div class="product-grid">
-    <?php foreach ($produkPilihan as $p): ?>
+    <?php foreach ($produkPilihan as $i => $p): ?>
       <article class="product-card">
         <a href="produk_detail.php?slug=<?= h($p['slug']) ?>" class="product-thumb">
           <img src="assets/<?= h(first_image($p['gambar'])) ?>" alt="<?= h($p['nama']) ?>" loading="lazy">
+          <?php if ($i < 2): ?><span class="product-badge">Baru</span><?php endif; ?>
         </a>
         <div class="product-body">
           <p class="product-kategori"><?= h($p['kategori_nama']) ?></p>
@@ -90,19 +111,25 @@ require __DIR__ . '/includes/header.php';
     </div>
     <div class="about-points">
       <div class="about-point">
-        <span class="point-icon">01</span>
-        <p class="point-title">Handcrafted</p>
-        <p class="point-desc">Dirajut secara manual dengan ketelitian pada setiap detail.</p>
+        <span class="point-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v2M15 2v2M12 22c-4.4 0-8-3.6-8-8 0-2.8 1.4-5.2 3.6-6.6L12 4l4.4 3.4C18.6 8.8 20 11.2 20 14c0 4.4-3.6 8-8 8z"/></svg></span>
+        <div>
+          <p class="point-title">Handcrafted</p>
+          <p class="point-desc">Dirajut secara manual dengan ketelitian pada setiap detail.</p>
+        </div>
       </div>
       <div class="about-point">
-        <span class="point-icon">02</span>
-        <p class="point-title">Selected Materials</p>
-        <p class="point-desc">Menggunakan benang pilihan yang nyaman dan berkualitas.</p>
+        <span class="point-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M8 9.5c0-1.4 1.8-2.5 4-2.5s4 1.1 4 2.5-1.8 2-4 2.5-4 1.1-4 2.5 1.8 2.5 4 2.5 4-1.1 4-2.5"/></svg></span>
+        <div>
+          <p class="point-title">Selected Materials</p>
+          <p class="point-desc">Menggunakan benang pilihan yang nyaman dan berkualitas.</p>
+        </div>
       </div>
       <div class="about-point">
-        <span class="point-icon">03</span>
-        <p class="point-title">Made to Order</p>
-        <p class="point-desc">Pilihan warna dan ukuran dapat disesuaikan dengan kebutuhan.</p>
+        <span class="point-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20c4-3 7-6.5 7-10.5A5.5 5.5 0 0 0 12 6a5.5 5.5 0 0 0-7 3.5C5 13.5 8 17 12 20z"/><circle cx="12" cy="10" r="2"/></svg></span>
+        <div>
+          <p class="point-title">Made to Order</p>
+          <p class="point-desc">Pilihan warna dan ukuran dapat disesuaikan dengan kebutuhan.</p>
+        </div>
       </div>
     </div>
   </div>
@@ -113,15 +140,18 @@ require __DIR__ . '/includes/header.php';
   <h2 class="section-title">Cerita dari Pelanggan Lalunaco.</h2>
   <div class="testimoni-grid">
     <blockquote class="testimoni-card">
-      <p class="testimoni-text">"Sweater rajutnya hangat banget dan rapi jahitannya. Bikin lagi warna lain deh."</p>
+      <div class="testimoni-stars" aria-hidden="true">★★★★★</div>
+      <p class="testimoni-text">Sweater rajutnya hangat banget dan rapi jahitannya. Bikin lagi warna lain deh.</p>
       <cite class="testimoni-name">— @dinaputri</cite>
     </blockquote>
     <blockquote class="testimoni-card">
-      <p class="testimoni-text">"Pesen tas rajut custom, hasilnya persis referensi yang saya kasih. Pengiriman juga cepat."</p>
+      <div class="testimoni-stars" aria-hidden="true">★★★★★</div>
+      <p class="testimoni-text">Pesen tas rajut custom, hasilnya persis referensi yang saya kasih. Pengiriman juga cepat.</p>
       <cite class="testimoni-name">— @ratna.k</cite>
     </blockquote>
     <blockquote class="testimoni-card">
-      <p class="testimoni-text">"Mainan rajut buat anak saya lembut dan aman, motifnya juga lucu-lucu."</p>
+      <div class="testimoni-stars" aria-hidden="true">★★★★★</div>
+      <p class="testimoni-text">Mainan rajut buat anak saya lembut dan aman, motifnya juga lucu-lucu.</p>
       <cite class="testimoni-name">— @bunda_alya</cite>
     </blockquote>
   </div>
@@ -133,17 +163,17 @@ require __DIR__ . '/includes/header.php';
     <div class="order-step">
       <span class="order-step-num">1</span>
       <p class="order-step-title">Pilih Produk</p>
-      <p class="order-step-desc">Lihat katalog dan pilih rajutan yang kamu suka.</p>
+      <p class="order-step-desc">Lihat katalog, pilih warna, lalu masukkan ke keranjang atau klik "Beli Sekarang".</p>
     </div>
     <div class="order-step">
       <span class="order-step-num">2</span>
-      <p class="order-step-title">Hubungi via WhatsApp</p>
-      <p class="order-step-desc">Klik "Tanya via WhatsApp" di halaman produk untuk konfirmasi warna dan ukuran.</p>
+      <p class="order-step-title">Isi Data & Checkout</p>
+      <p class="order-step-desc">Lengkapi nama, kontak, dan alamat pengiriman di halaman checkout — tanpa perlu daftar akun.</p>
     </div>
     <div class="order-step">
       <span class="order-step-num">3</span>
       <p class="order-step-title">Konfirmasi & Bayar</p>
-      <p class="order-step-desc">Kami kirim rincian harga dan ongkir, lalu kamu transfer sesuai kesepakatan.</p>
+      <p class="order-step-desc">Kami hubungi kamu via WhatsApp buat konfirmasi ongkir, lalu kamu transfer sesuai kesepakatan.</p>
     </div>
     <div class="order-step">
       <span class="order-step-num">4</span>
