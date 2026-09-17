@@ -24,7 +24,7 @@
       <p class="footer-heading">Kontak</p>
       <p>Jl.Nusa Penida, No. 27, Madiun, Jawa Timur</p>
       <p>halo@lalunaco.id</p>
-      <p>+62 812-0706-2020</p>
+      <p>+62 889-8950-5932</p>
     </div>
   </div>
   <p class="footer-copy">&copy; 2026 Lalunaco. Proyek Uji Sertifikasi Kompetensi — Junior Web Developer.</p>
