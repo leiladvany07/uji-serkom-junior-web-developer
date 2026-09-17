@@ -551,6 +551,154 @@ select.status-badge{
 .quote-brand-text{font-family:var(--font-display);font-weight:600;font-size:clamp(1.3rem,2.2vw,1.6rem);color:var(--forest);line-height:1.3;}
 .quote-brand-desc{color:var(--clay-dark);font-size:0.92rem;margin-top:0.8rem;max-width:42ch;}
 
+/* ================================================================
+   ADMIN PANEL — REFRESH
+   Merapikan spasi, elevasi (shadow), fokus keyboard, dan konsistensi
+   antar halaman admin. Warna & font tetap memakai token yang sudah
+   ada (forest/clay/cream, Lora + Nunito Sans).
+   ================================================================ */
+:root{
+  --radius-sm:8px; --radius-md:12px; --radius-lg:16px;
+  --shadow-sm:0 1px 2px rgba(43,38,32,0.05);
+  --shadow-md:0 6px 18px rgba(43,38,32,0.08);
+  --shadow-lg:0 20px 45px rgba(43,38,32,0.14);
+  --accent-soft:#F1E3D3;
+}
+
+*:focus-visible{outline:2px solid var(--clay);outline-offset:2px;border-radius:4px;}
+
+/* ---- Shell & sidebar ---- */
+.admin-layout{background:var(--bg);}
+.admin-sidebar{
+  width:238px;
+  padding:1.9rem 1.3rem 1.6rem;
+  gap:2rem;
+}
+@media (min-width:901px){
+  .admin-sidebar{box-shadow:1px 0 0 rgba(0,0,0,0.06);}
+}
+.admin-sidebar-brand{padding-bottom:1.2rem;border-bottom:1px solid rgba(255,255,255,0.1);width:100%;}
+.admin-sidebar .logo{font-size:1.3rem;}
+.admin-nav{gap:0.25rem;}
+.admin-nav-item{
+  position:relative;
+  gap:0.75rem;
+  padding:0.65rem 0.75rem 0.65rem 0.9rem;
+  border-radius:var(--radius-sm);
+  font-weight:600;
+  transition:background .15s ease, color .15s ease;
+}
+.admin-nav-item svg{opacity:0.7;flex-shrink:0;transition:opacity .15s ease;}
+.admin-nav-item:hover svg,.admin-nav-item.active svg{opacity:1;}
+.admin-nav-item.active{background:rgba(255,255,255,0.1);}
+.admin-nav-item.active::before{
+  content:"";
+  position:absolute;
+  left:-1.3rem;top:8px;bottom:8px;width:3px;
+  border-radius:0 3px 3px 0;
+  background:var(--clay);
+}
+@media (max-width:900px){.admin-nav-item.active::before{display:none;}}
+.admin-nav-badge{font-size:0.66rem;padding:0.12rem 0.5rem;}
+.admin-sidebar-footer{font-size:0.7rem;padding-top:1.1rem;border-top:1px solid rgba(255,255,255,0.1);}
+
+.admin-main{padding:2rem 2.4rem 3rem;max-width:1180px;margin:0 auto;}
+
+/* ---- Page headers ---- */
+.admin-header,.page-intro{
+  padding-bottom:1.3rem;
+  margin-bottom:1.8rem;
+  border-bottom:1px solid var(--line);
+  align-items:flex-end;
+}
+.admin-header h1,.page-title{font-size:1.5rem;}
+.page-subtitle{margin-top:0.3rem;}
+.admin-header .btn-primary{padding:0.65rem 1.3rem;font-size:0.85rem;border-radius:var(--radius-sm);box-shadow:var(--shadow-sm);transition:box-shadow .15s ease,transform .15s ease;}
+.admin-header .btn-primary:hover{box-shadow:var(--shadow-md);transform:translateY(-1px);}
+
+/* ---- Stat cards ---- */
+.admin-stats{grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:2rem;}
+.stat-card{
+  padding:1.2rem 1.3rem;
+  border-radius:var(--radius-md);
+  box-shadow:var(--shadow-sm);
+  gap:0.4rem;
+  transition:box-shadow .15s ease, transform .15s ease;
+}
+.stat-card:hover{box-shadow:var(--shadow-md);transform:translateY(-2px);}
+.stat-value{font-size:1.6rem;}
+.stat-label{font-size:0.78rem;font-weight:600;}
+
+/* ---- Toolbar / search ---- */
+.admin-toolbar{margin-bottom:1.4rem;}
+.admin-search{box-shadow:var(--shadow-sm);transition:border-color .15s ease;}
+.admin-search:focus-within{border-color:var(--clay);}
+
+/* ---- Tables ---- */
+.admin-table{border-radius:var(--radius-md);box-shadow:var(--shadow-sm);}
+.admin-table th{font-size:0.72rem;padding:0.85rem 0.9rem;}
+.admin-table td{padding:0.85rem 0.9rem;font-size:0.85rem;}
+.admin-table tbody tr:hover{background:#FAF4E8;}
+.admin-table code{background:var(--accent-soft);padding:0.15rem 0.45rem;border-radius:4px;font-size:0.8rem;}
+.admin-table td[colspan]{padding:2.2rem 0.9rem;text-align:center;color:var(--muted);}
+.admin-actions{gap:0.45rem;}
+.admin-actions a{
+  display:inline-flex;align-items:center;
+  padding:0.4rem 0.75rem;
+  border-radius:20px;
+  border:1px solid var(--line);
+  background:var(--card);
+  font-weight:600;font-size:0.78rem;
+  transition:border-color .15s ease, background .15s ease;
+}
+.admin-actions a:hover{border-color:var(--clay);background:#FBF6EA;}
+.admin-actions .link-danger{padding:0.4rem 0.75rem;border-radius:20px;border:1px solid var(--line);background:var(--card);transition:border-color .15s ease, background .15s ease;}
+.admin-actions .link-danger:hover{border-color:#A33131;background:#FCEFEF;}
+
+/* ---- Forms ---- */
+.admin-form,.pesanan-side-card{border-radius:var(--radius-md);box-shadow:var(--shadow-sm);}
+.form-errors{margin-bottom:1.2rem;}
+.admin-form input,.admin-form select,.admin-form textarea,
+.laporan-filter input,.pesanan-status-form select,.pesanan-status-manual input{
+  transition:border-color .15s ease, box-shadow .15s ease;
+}
+.admin-form input:focus,.admin-form select:focus,.admin-form textarea:focus,
+.laporan-filter input:focus,.pesanan-status-form select:focus,.pesanan-status-manual input:focus{
+  outline:none;border-color:var(--clay);box-shadow:0 0 0 3px rgba(168,98,59,0.15);
+}
+.admin-form button[type="submit"]{align-self:flex-start;box-shadow:var(--shadow-sm);transition:box-shadow .15s ease;}
+.admin-form button[type="submit"]:hover{box-shadow:var(--shadow-md);}
+
+/* ---- Cards ---- */
+.pesanan-card{box-shadow:var(--shadow-sm);}
+.pesanan-card:hover{box-shadow:var(--shadow-md);}
+.pesanan-main-card,.pesanan-side-card,.laporan-chart-card{box-shadow:var(--shadow-sm);}
+
+/* ---- Buttons & pagination ---- */
+.icon-btn{box-shadow:var(--shadow-sm);}
+.icon-btn:hover{box-shadow:var(--shadow-md);}
+.btn-pill{box-shadow:var(--shadow-sm);}
+.pagination-btn{box-shadow:var(--shadow-sm);transition:border-color .15s ease;}
+.pagination-btn:hover:not(.disabled):not(.active){border-color:var(--clay);}
+
+/* ---- Auth ---- */
+.admin-auth-card{box-shadow:var(--shadow-lg);}
+.admin-auth-card input:focus{outline:none;border-color:var(--clay);box-shadow:0 0 0 3px rgba(168,98,59,0.15);}
+
+/* ===== AKUN PELANGGAN (daftar / masuk / riwayat) ===== */
+.nav-account-link{font-size:0.86rem;white-space:nowrap;}
+.nav-account-link:hover{color:#fff;}
+.auth-wrap{max-width:440px;margin:0 auto;}
+.auth-wrap .contact-lead{margin-bottom:1.5rem;}
+.auth-switch{text-align:center;margin-top:1.2rem;font-size:0.88rem;color:var(--muted);}
+.auth-switch a{color:var(--clay-dark);font-weight:600;}
+.auth-switch a:hover{text-decoration:underline;}
+
+.riwayat-list{display:flex;flex-direction:column;gap:1.3rem;}
+.riwayat-head{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1.1rem;padding-bottom:1.1rem;border-bottom:1px solid var(--line);}
+
+.btn-icon-only{display:inline-flex;align-items:center;justify-content:center;padding:0.8rem;width:48px;height:48px;flex-shrink:0;}
+
 /* ===== RESPONSIVE — TABLET (di bawah 900px) ===== */
 @media (max-width:900px){
   .main-nav{
