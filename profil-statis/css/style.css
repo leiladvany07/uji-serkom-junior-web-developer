@@ -100,7 +100,7 @@ main{max-width:var(--wrap);margin:0 auto;padding:0 2rem;}
   display:grid;
   grid-template-columns:1.1fr .9fr;
   gap:2.5rem;
-  align-items:center;
+  align-items:start;
   padding:4.5rem 0 5rem;
 }
 .hero-eyebrow{
