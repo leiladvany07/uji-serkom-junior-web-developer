@@ -127,7 +127,7 @@ $queryStringPage = http_build_query(['dari' => $dari, 'sampai' => $sampai]);
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
         <span>Lihat toko</span>
       </a>
-      <a href="logout.php" class="admin-nav-item">
+      <a href="logout.php" class="admin-nav-item" id="logoutLink">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
         <span>Keluar</span>
       </a>
@@ -261,5 +261,35 @@ $queryStringPage = http_build_query(['dari' => $dari, 'sampai' => $sampai]);
     </div>
   </main>
 </div>
+<div class="confirm-overlay" id="confirmLogout">
+  <div class="confirm-box">
+    <h3>Keluar dari akun admin?</h3>
+    <p>Kamu perlu login lagi buat masuk ke dashboard ini.</p>
+    <div class="confirm-box-actions">
+      <button type="button" class="confirm-btn-cancel" id="confirmLogoutCancel">Batal</button>
+      <button type="button" class="confirm-btn-ok" id="confirmLogoutOk">Ya, Keluar</button>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  var link = document.getElementById("logoutLink");
+  var overlay = document.getElementById("confirmLogout");
+  if (!link || !overlay) return;
+  link.addEventListener("click", function(e){
+    e.preventDefault();
+    overlay.classList.add("open");
+  });
+  document.getElementById("confirmLogoutCancel").addEventListener("click", function(){
+    overlay.classList.remove("open");
+  });
+  document.getElementById("confirmLogoutOk").addEventListener("click", function(){
+    window.location.href = "logout.php";
+  });
+  overlay.addEventListener("click", function(e){
+    if (e.target === overlay) overlay.classList.remove("open");
+  });
+})();
+</script>
 </body>
 </html>

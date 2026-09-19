@@ -8,3 +8,31 @@ document.addEventListener('DOMContentLoaded', function () {
     toggle.setAttribute('aria-expanded', isOpen);
   });
 });
+
+// ===== Modal konfirmasi checkout (ganti confirm() bawaan browser) =====
+document.addEventListener('DOMContentLoaded', function () {
+  var form = document.getElementById('form-checkout');
+  var overlay = document.getElementById('confirmCheckout');
+  if (!form || !overlay) return;
+
+  var confirmed = false;
+  form.addEventListener('submit', function (e) {
+    if (confirmed) return;
+    e.preventDefault();
+    overlay.classList.add('open');
+  });
+
+  var btnCancel = document.getElementById('confirmCheckoutCancel');
+  var btnOk = document.getElementById('confirmCheckoutOk');
+  if (btnCancel) btnCancel.addEventListener('click', function () {
+    overlay.classList.remove('open');
+  });
+  if (btnOk) btnOk.addEventListener('click', function () {
+    confirmed = true;
+    overlay.classList.remove('open');
+    form.submit();
+  });
+  overlay.addEventListener('click', function (e) {
+    if (e.target === overlay) overlay.classList.remove('open');
+  });
+});

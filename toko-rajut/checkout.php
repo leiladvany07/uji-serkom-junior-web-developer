@@ -143,7 +143,7 @@ require __DIR__ . '/includes/header.php';
   <?php endif; ?>
 
   <div class="contact-layout">
-    <form class="contact-form" method="post" action="checkout.php" novalidate>
+    <form class="contact-form" method="post" action="checkout.php" novalidate id="form-checkout">
       <label>Nama Penerima
         <input type="text" name="nama" value="<?= h($_POST['nama'] ?? $pelangganData['nama'] ?? '') ?>" required>
       </label>
@@ -187,5 +187,16 @@ require __DIR__ . '/includes/header.php';
     </div>
   </div>
 </section>
+
+<div class="confirm-overlay" id="confirmCheckout">
+  <div class="confirm-box">
+    <h3>Buat pesanan ini?</h3>
+    <p>Pastikan alamat dan data penerima sudah benar sebelum melanjutkan.</p>
+    <div class="confirm-box-actions">
+      <button type="button" class="confirm-btn-cancel" id="confirmCheckoutCancel">Batal</button>
+      <button type="button" class="confirm-btn-ok" id="confirmCheckoutOk">Ya, Buat Pesanan</button>
+    </div>
+  </div>
+</div>
 
 <?php require __DIR__ . '/includes/footer.php'; ?>
