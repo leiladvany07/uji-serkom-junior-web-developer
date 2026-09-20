@@ -6,19 +6,40 @@
  * WhatsApp: membuat link wa.me dengan pesan otomatis.
  */
 
-/** Template pesan berdasarkan status pesanan. */
+/** Label per status, dipakai di WhatsApp maupun badge email. */
+function label_status_emoji(string $status): string {
+    $labels = [
+        'menunggu konfirmasi' => 'Menunggu Konfirmasi',
+        'diproses'            => 'Diproses',
+        'dikirim'             => 'Dikirim',
+        'selesai'             => 'Selesai',
+        'dibatalkan'          => 'Dibatalkan',
+    ];
+    $key = strtolower(trim($status));
+    return $labels[$key] ?? ucwords($status);
+}
+
+/** Template pesan berdasarkan status pesanan — ringkas, satu pesan saja. */
 function template_pesan_status(): array {
     return [
-        'menunggu konfirmasi' => "Halo {nama}, pesanan Anda dengan kode {kode} sedang menunggu konfirmasi kami. Kami akan segera memprosesnya. Terima kasih telah berbelanja di Lalunaco!",
-        'diproses' => "Halo {nama}, kabar baik! Pesanan Anda dengan kode {kode} sedang kami kerjakan. Kami akan kabari lagi begitu pesanan siap dikirim.",
-        'dikirim' => "Halo {nama}, pesanan Anda dengan kode {kode} sudah kami kirim. Mohon ditunggu ya, semoga cepat sampai dan sesuai harapan!",
-        'selesai' => "Halo {nama}, pesanan Anda dengan kode {kode} telah selesai. Terima kasih sudah berbelanja di Lalunaco, semoga suka dengan produknya!",
-        'dibatalkan' => "Halo {nama}, mohon maaf pesanan Anda dengan kode {kode} telah dibatalkan. Jika ada pertanyaan atau ini keliru, silakan hubungi kami.",
+        'menunggu konfirmasi' =>
+            "halo {nama}, pesanan anda dengan kode {kode} sudah kami terima dan sedang menunggu konfirmasi. terima kasih sudah berbelanja di lalunaco.",
+
+        'diproses' =>
+            "halo {nama}, kabar baik! pesanan anda dengan kode {kode} sedang kami proses. terima kasih sudah berbelanja di lalunaco.",
+
+        'dikirim' =>
+            "halo {nama}, pesanan anda dengan kode {kode} sudah dikirim. terima kasih sudah berbelanja di lalunaco.",
+
+        'selesai' =>
+            "halo {nama}, pesanan anda dengan kode {kode} sudah selesai. terima kasih sudah berbelanja di lalunaco, semoga produknya berkenan.",
+
+        'dibatalkan' =>
+            "halo {nama}, pesanan anda dengan kode {kode} telah dibatalkan. hubungi kami via whatsapp kalau ada pertanyaan.",
     ];
 }
 
-
-/** Membuat pesan status untuk pembeli. */
+/** Membuat pesan status untuk pembeli (dipakai untuk isi WhatsApp & email). */
 function pesan_status_untuk_pembeli(
     string $namaPembeli,
     string $kodePesanan,
@@ -29,7 +50,7 @@ function pesan_status_untuk_pembeli(
     $key = strtolower(trim($statusBaru));
 
     $template = $templates[$key]
-        ?? "Halo {nama}, status pesanan Anda dengan kode {kode} telah diperbarui menjadi: {status}.";
+        ?? "halo {nama}, status pesanan anda dengan kode {kode} telah diperbarui menjadi: {status}.";
 
     return strtr($template, [
         '{nama}' => $namaPembeli,
@@ -37,7 +58,6 @@ function pesan_status_untuk_pembeli(
         '{status}' => ucwords($statusBaru),
     ]);
 }
-
 
 /** Normalisasi nomor WhatsApp Indonesia. */
 function normalisasi_nomor_wa(?string $telepon): string {
@@ -250,13 +270,9 @@ function kirim_email_status_pesanan(
         $statusBaru
     );
 
-    $subjek = "Update Pesanan {$kodePesanan} - Lalunaco";
+    $labelStatus = label_status_emoji($statusBaru);
 
-    $n = htmlspecialchars(
-        $namaPembeli,
-        ENT_QUOTES,
-        'UTF-8'
-    );
+    $subjek = "{$labelStatus} — Pesanan {$kodePesanan} - Lalunaco";
 
     $kodeAman = htmlspecialchars(
         $kodePesanan,
@@ -264,8 +280,8 @@ function kirim_email_status_pesanan(
         'UTF-8'
     );
 
-    $statusTampil = htmlspecialchars(
-        ucwords($statusBaru),
+    $labelAman = htmlspecialchars(
+        $labelStatus,
         ENT_QUOTES,
         'UTF-8'
     );
@@ -279,15 +295,11 @@ function kirim_email_status_pesanan(
     );
 
     $content = "
-        <span style='display:inline-block;background:#EFE3C8;color:#7C4527;font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;margin-bottom:16px;'>
-            Update pesanan
+        <span style='display:inline-block;background:#EFE3C8;color:#7C4527;font-size:14px;font-weight:700;padding:6px 14px;border-radius:20px;margin-bottom:16px;'>
+            {$labelAman}
         </span>
 
-        <h2 style='margin:0 0 6px;color:#2B2620;font-size:20px;'>
-            Halo, {$n}
-        </h2>
-
-        <p style='margin:0 0 20px;color:#786F5E;font-size:14px;line-height:1.6;'>
+        <p style='margin:0 0 20px;color:#2B2620;font-size:14px;line-height:1.7;'>
             {$pesanHtml}
         </p>
 
@@ -299,18 +311,6 @@ function kirim_email_status_pesanan(
 
                 <td style='padding:6px 0;color:#2B2620;font-size:14px;font-weight:600;'>
                     {$kodeAman}
-                </td>
-            </tr>
-
-            <tr>
-                <td style='padding:6px 0;color:#786F5E;font-size:13px;'>
-                    Status
-                </td>
-
-                <td style='padding:6px 0;'>
-                    <span style='background:#EFE3C8;color:#7C4527;padding:4px 10px;border-radius:12px;font-size:13px;font-weight:700;'>
-                        {$statusTampil}
-                    </span>
                 </td>
             </tr>
         </table>
