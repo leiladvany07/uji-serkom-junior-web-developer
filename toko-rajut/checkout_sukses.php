@@ -1,118 +1,74 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) session_start();
 require_once __DIR__ . '/config.php';
 
-$keranjang = $_SESSION['keranjang'] ?? [];
-if (empty($keranjang)) {
-    header('Location: keranjang.php');
+$kode = trim($_GET['kode'] ?? '');
+if ($kode === '') {
+    header('Location: index.php');
     exit;
 }
 
-$ids = array_keys($keranjang);
-$placeholders = implode(',', array_fill(0, count($ids), '?'));
-$stmt = $pdo->prepare("SELECT * FROM produk WHERE id IN ($placeholders)");
-$stmt->execute($ids);
-$produkList = $stmt->fetchAll();
+$stmt = $pdo->prepare('SELECT * FROM transaksi WHERE kode = ?');
+$stmt->execute([$kode]);
+$transaksi = $stmt->fetch();
 
-$items = [];
-$total = 0;
-foreach ($produkList as $p) {
-    $jumlah = $keranjang[$p['id']];
-    $subtotal = $p['harga'] * $jumlah;
-    $total += $subtotal;
-    $items[] = ['produk' => $p, 'jumlah' => $jumlah, 'subtotal' => $subtotal];
+if (!$transaksi) {
+    header('Location: index.php');
+    exit;
 }
 
-$errors = [];
+$stmtItem = $pdo->prepare('SELECT ti.*, p.gambar FROM transaksi_item ti LEFT JOIN produk p ON p.id = ti.produk_id WHERE ti.transaksi_id = ? ORDER BY ti.id');
+$stmtItem->execute([$transaksi['id']]);
+$itemList = $stmtItem->fetchAll();
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $nama = trim($_POST['nama'] ?? '');
-    $telepon = trim($_POST['telepon'] ?? '');
-    $email = trim($_POST['email'] ?? '');
-    $alamat = trim($_POST['alamat'] ?? '');
-    $catatan = trim($_POST['catatan'] ?? '');
-
-    if ($nama === '') $errors[] = 'Nama wajib diisi.';
-    if ($telepon === '') $errors[] = 'Nomor telepon wajib diisi.';
-    if ($alamat === '') $errors[] = 'Alamat pengiriman wajib diisi.';
-    if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = 'Format email tidak valid.';
-
-    if (empty($errors)) {
-        $kode = 'LLC-' . date('ymd') . '-' . strtoupper(substr(uniqid(), -5));
-
-        $pdo->beginTransaction();
-        try {
-            $stmt = $pdo->prepare('INSERT INTO transaksi (kode, nama, telepon, email, alamat, catatan, total) VALUES (?,?,?,?,?,?,?) RETURNING id');
-            $stmt->execute([$kode, $nama, $telepon, $email ?: null, $alamat, $catatan ?: null, $total]);
-            $transaksiId = $stmt->fetchColumn();
-
-            $stmtItem = $pdo->prepare('INSERT INTO transaksi_item (transaksi_id, produk_id, nama_produk, harga, jumlah, subtotal) VALUES (?,?,?,?,?,?)');
-            $stmtStok = $pdo->prepare('UPDATE produk SET stok = GREATEST(stok - ?, 0) WHERE id = ?');
-
-            foreach ($items as $item) {
-                $p = $item['produk'];
-                $stmtItem->execute([$transaksiId, $p['id'], $p['nama'], $p['harga'], $item['jumlah'], $item['subtotal']]);
-                $stmtStok->execute([$item['jumlah'], $p['id']]);
-            }
-
-            $pdo->commit();
-            unset($_SESSION['keranjang']);
-            header('Location: checkout_sukses.php?kode=' . urlencode($kode));
-            exit;
-        } catch (Exception $e) {
-            $pdo->rollBack();
-            $errors[] = 'Terjadi kesalahan saat memproses pesanan. Silakan coba lagi.';
-            error_log('Checkout gagal: ' . $e->getMessage());
-        }
-    }
-}
-
-$page_title = 'Checkout';
+$page_title = 'Pesanan Berhasil Dibuat';
 require __DIR__ . '/includes/header.php';
 ?>
 
 <section class="section">
-  <h1 class="section-title">Checkout</h1>
+  <div class="checkout-sukses-wrap">
+    <div class="checkout-sukses-icon">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+    </div>
+    <h1 class="section-title">Pesanan Berhasil Dibuat!</h1>
+    <p class="checkout-sukses-lead">Terima kasih, <?= h($transaksi['nama']) ?>. Pesanan kamu sudah kami terima dan akan segera diproses.</p>
 
-  <?php if (!empty($errors)): ?>
-    <ul class="form-errors">
-      <?php foreach ($errors as $e): ?><li><?= h($e) ?></li><?php endforeach; ?>
-    </ul>
-  <?php endif; ?>
+    <div class="pesanan-main-card">
+      <div class="riwayat-head">
+        <div>
+          <p class="pesanan-detail-eyebrow">Kode pesanan</p>
+          <strong class="pesanan-kode"><?= h($transaksi['kode']) ?></strong>
+        </div>
+        <span class="status-badge status-new"><span class="status-dot"></span>Menunggu Konfirmasi</span>
+      </div>
 
-  <div class="contact-layout">
-    <form class="contact-form" method="post" action="checkout.php" novalidate>
-      <label>Nama Penerima
-        <input type="text" name="nama" value="<?= h($_POST['nama'] ?? '') ?>" required>
-      </label>
-      <label>Nomor Telepon / WhatsApp
-        <input type="text" name="telepon" value="<?= h($_POST['telepon'] ?? '') ?>" required>
-      </label>
-      <label>Email (opsional)
-        <input type="email" name="email" value="<?= h($_POST['email'] ?? '') ?>">
-      </label>
-      <label>Alamat Pengiriman
-        <textarea name="alamat" rows="3" required><?= h($_POST['alamat'] ?? '') ?></textarea>
-      </label>
-      <label>Catatan (opsional)
-        <textarea name="catatan" rows="2"><?= h($_POST['catatan'] ?? '') ?></textarea>
-      </label>
-      <button type="submit" class="btn btn-primary">Buat Pesanan</button>
-    </form>
-
-    <div class="cart-summary">
-      <h2 class="cart-summary-title">Pesanan Anda</h2>
-      <?php foreach ($items as $item): $p = $item['produk']; ?>
-        <div class="checkout-summary-row">
-          <span><?= h($p['nama']) ?> &times; <?= $item['jumlah'] ?></span>
-          <span><?= format_rupiah($item['subtotal']) ?></span>
+      <?php foreach ($itemList as $it): ?>
+        <div class="pesanan-item-row">
+          <div class="pesanan-item-thumb">
+            <?php if (!empty($it['gambar'])): ?>
+              <img src="assets/<?= h(first_image($it['gambar'])) ?>" alt="<?= h($it['nama_produk']) ?>">
+            <?php else: ?>
+              <span class="pesanan-item-thumb-fallback">?</span>
+            <?php endif; ?>
+          </div>
+          <div class="pesanan-item-info">
+            <p class="pesanan-item-nama"><?= h($it['nama_produk']) ?></p>
+            <p class="pesanan-item-harga"><?= format_rupiah($it['harga']) ?> &times; <?= (int) $it['jumlah'] ?></p>
+          </div>
+          <div class="pesanan-item-subtotal"><?= format_rupiah($it['subtotal']) ?></div>
         </div>
       <?php endforeach; ?>
-      <div class="cart-summary-row">
-        <span>Total</span>
-        <span class="cart-summary-total"><?= format_rupiah($total) ?></span>
+
+      <div class="pesanan-total-row pesanan-total-row-flat">
+        <span>Total Pesanan</span>
+        <span class="cart-summary-total"><?= format_rupiah($transaksi['total']) ?></span>
       </div>
-      <p class="checkout-note">Pembayaran dan ongkos kirim akan dikonfirmasi lewat WhatsApp setelah pesanan dibuat.</p>
+    </div>
+
+    <p class="checkout-note checkout-sukses-note">Simpan kode pesanan di atas ya. Admin Lalunaco akan menghubungi kamu lewat WhatsApp di nomor <strong><?= h($transaksi['telepon']) ?></strong> untuk konfirmasi ongkos kirim dan pembayaran.</p>
+
+    <div class="checkout-sukses-actions">
+      <a href="produk.php" class="btn btn-primary">Lanjut Belanja</a>
+      <a href="index.php" class="btn btn-outline">Kembali ke Beranda</a>
     </div>
   </div>
 </section>

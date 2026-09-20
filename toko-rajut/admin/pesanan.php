@@ -49,6 +49,7 @@ $pesananList = $stmt->fetchAll();
 $totalBaruPesanan = (int) $pdo->query("SELECT COUNT(*) FROM transaksi WHERE status IS NULL OR status = '' OR status ILIKE '%baru%' OR status ILIKE '%menunggu%'")->fetchColumn();
 $totalBaruPesan = (int) $pdo->query("SELECT COUNT(*) FROM pesan WHERE status = 'baru' OR status IS NULL")->fetchColumn();
 $totalOmzetPesanan = (float) $pdo->query('SELECT COALESCE(SUM(total),0) FROM transaksi')->fetchColumn();
+$latestIdSaatIni = (int) $pdo->query('SELECT COALESCE(MAX(id), 0) FROM transaksi')->fetchColumn();
 
 function inisial_pesanan($nama) {
     $parts = preg_split('/\s+/', trim((string) $nama));
@@ -108,6 +109,10 @@ function inisial_pesanan($nama) {
   </aside>
 
   <main class="admin-main">
+    <div class="pesanan-live-banner" id="pesananLiveBanner">
+      <span>🔔 Ada pesanan baru masuk!</span>
+      <button type="button" id="pesananLiveRefresh">Muat ulang</button>
+    </div>
     <div class="page-intro">
       <div>
         <h1 class="page-title">Pesanan</h1>
@@ -235,6 +240,33 @@ document.getElementById('pesananSearch').addEventListener('input', function () {
   });
   overlay.addEventListener("click", function(e){
     if (e.target === overlay) overlay.classList.remove("open");
+  });
+})();
+</script>
+<script>
+// ===== Live-update: cek pesanan baru tiap beberapa detik tanpa reload =====
+(function(){
+  var latestIdAwal = <?= (int) $latestIdSaatIni ?>;
+  var halamanIni = <?= (int) $page ?>;
+  var banner = document.getElementById('pesananLiveBanner');
+  var btnRefresh = document.getElementById('pesananLiveRefresh');
+  if (!banner || halamanIni !== 1) return; // notifikasi baru cuma relevan di halaman 1
+
+  function cekPesananBaru(){
+    fetch('cek_pesanan_baru.php', { credentials: 'same-origin' })
+      .then(function(res){ return res.json(); })
+      .then(function(data){
+        if (data.latest_id > latestIdAwal) {
+          banner.classList.add('show');
+        }
+      })
+      .catch(function(){ /* diamkan kalau gagal, coba lagi nanti */ });
+  }
+
+  setInterval(cekPesananBaru, 12000);
+
+  if (btnRefresh) btnRefresh.addEventListener('click', function(){
+    window.location.reload();
   });
 })();
 </script>

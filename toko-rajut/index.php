@@ -25,7 +25,7 @@ require __DIR__ . '/includes/header.php';
       </div>
     </div>
 
-    <div class="hero-illustration reveal">
+    <div class="hero-illustration">
       <svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
         <ellipse cx="195" cy="330" rx="120" ry="14" fill="#33402C" opacity="0.06"/>
         <g transform="translate(180 190)">

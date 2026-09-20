@@ -38,16 +38,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['set_status'])) {
         $pdo->prepare('UPDATE transaksi SET status = ? WHERE id = ?')->execute([$new, $id]);
         sinkron_stok_pesanan($pdo, $id, $new);
 
-        // ===== Notifikasi otomatis ke pembeli (baru) =====
-        $emailError = null;
-        $emailOk = kirim_email_status_pesanan($transaksi['email'] ?? '', $transaksi['nama'], $transaksi['kode'], $new, $emailError);
-        $waLink  = link_wa_notifikasi_status($transaksi['telepon'] ?? '', $transaksi['nama'], $transaksi['kode'], $new);
+        // ===== Notifikasi ke pembeli lewat WhatsApp (tautan siap kirim) =====
+        $waLink = link_wa_notifikasi_status($transaksi['telepon'] ?? '', $transaksi['nama'], $transaksi['kode'], $new);
 
         $redirectQuery = http_build_query([
             'id'             => $id,
             'status_updated' => 1,
-            'email_sent'     => $emailOk ? 1 : 0,
-            'email_error'    => $emailOk ? '' : $emailError,
             'wa_link'        => $waLink,
         ]);
         header('Location: pesanan_detail.php?' . $redirectQuery);
@@ -146,17 +142,8 @@ $totalBaruPesan = (int) $pdo->query("SELECT COUNT(*) FROM pesan WHERE status = '
     <a href="pesanan.php" class="admin-back">&larr; Kembali ke daftar pesanan</a>
 
     <?php if (isset($_GET['status_updated']) && $_GET['status_updated'] == '1'): ?>
-      <?php $emailSent = ($_GET['email_sent'] ?? '0') === '1'; ?>
-      <div class="pesanan-notif-banner <?= $emailSent ? '' : 'is-error' ?>">
-        <p>
-          Status pesanan berhasil diperbarui.
-          <?php if ($emailSent): ?>
-            Email notifikasi ke pembeli sudah terkirim.
-          <?php else: ?>
-            Email notifikasi <strong>gagal</strong> terkirim<?php if (!empty($_GET['email_error'])): ?>: <code><?= h($_GET['email_error']) ?></code><?php endif; ?>.
-            (Cek konfigurasi SMTP di <code>admin/notifikasi.php</code>.)
-          <?php endif; ?>
-        </p>
+      <div class="pesanan-notif-banner">
+        <p>Status pesanan berhasil diperbarui.</p>
         <?php if (!empty($_GET['wa_link'])): ?>
           <a class="icon-btn icon-btn-wa" href="<?= h($_GET['wa_link']) ?>" target="_blank" rel="noopener">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.6 6.3A8.9 8.9 0 0 0 12 4a8.9 8.9 0 0 0-7.8 13.4L3 21l3.7-1.2A8.9 8.9 0 0 0 12 21a8.9 8.9 0 0 0 5.6-15.7zM12 19.3a7.3 7.3 0 0 1-3.9-1.1l-.3-.2-2.6.9.8-2.5-.2-.3A7.3 7.3 0 1 1 19.3 12 7.3 7.3 0 0 1 12 19.3z"/></svg>
@@ -264,7 +251,7 @@ $totalBaruPesan = (int) $pdo->query("SELECT COUNT(*) FROM pesan WHERE status = '
           <button type="submit" class="btn-pill">Simpan</button>
         </form>
         <p style="font-size:.82rem;color:#6b7280;margin-top:.75rem;">
-          Setiap kali status diubah, email notifikasi otomatis dikirim ke pembeli dan tombol kirim WhatsApp akan muncul di atas.
+          Setiap kali status diubah, tombol kirim notifikasi WhatsApp ke pembeli akan muncul di atas.
         </p>
       </div>
     </div>

@@ -36,3 +36,20 @@ document.addEventListener('DOMContentLoaded', function () {
     if (e.target === overlay) overlay.classList.remove('open');
   });
 });
+
+// ===== Sub-pilihan bank / e-wallet di checkout =====
+document.addEventListener('DOMContentLoaded', function () {
+  var selectPembayaran = document.getElementById('selectPembayaran');
+  var wrapBank = document.getElementById('wrapBank');
+  var wrapEwallet = document.getElementById('wrapEwallet');
+  if (!selectPembayaran || !wrapBank || !wrapEwallet) return;
+
+  function terapkanTampilan() {
+    var v = selectPembayaran.value;
+    wrapBank.style.display = (v === 'Transfer Bank') ? '' : 'none';
+    wrapEwallet.style.display = (v === 'E-Wallet (DANA/OVO/GoPay)') ? '' : 'none';
+  }
+
+  selectPembayaran.addEventListener('change', terapkanTampilan);
+  terapkanTampilan(); // langsung terapkan saat halaman dimuat (misalnya setelah error validasi)
+});

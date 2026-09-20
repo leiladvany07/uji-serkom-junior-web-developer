@@ -70,6 +70,8 @@ if (!empty($_SESSION['pelanggan_id'])) {
 }
 
 $statusPembayaranOptions = ['Transfer Bank', 'QRIS', 'E-Wallet (DANA/OVO/GoPay)', 'COD (Bayar di Tempat)'];
+$bankOptions = ['BCA', 'BRI', 'BNI', 'Mandiri', 'CIMB Niaga', 'Bank lainnya'];
+$ewalletOptions = ['DANA', 'OVO', 'GoPay', 'ShopeePay', 'E-wallet lainnya'];
 
 $errors = [];
 
@@ -80,12 +82,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $alamat = trim($_POST['alamat'] ?? '');
     $catatan = trim($_POST['catatan'] ?? '');
     $pembayaran = trim($_POST['pembayaran'] ?? '');
+    $bankPilihan = trim($_POST['bank_pilihan'] ?? '');
+    $ewalletPilihan = trim($_POST['ewallet_pilihan'] ?? '');
 
     if ($nama === '') $errors[] = 'Nama wajib diisi.';
     if ($telepon === '') $errors[] = 'Nomor telepon wajib diisi.';
     if ($alamat === '') $errors[] = 'Alamat pengiriman wajib diisi.';
     if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = 'Format email tidak valid.';
     if (!in_array($pembayaran, $statusPembayaranOptions, true)) $errors[] = 'Pilih metode pembayaran.';
+    if ($pembayaran === 'Transfer Bank' && !in_array($bankPilihan, $bankOptions, true)) $errors[] = 'Pilih bank tujuan transfer.';
+    if ($pembayaran === 'E-Wallet (DANA/OVO/GoPay)' && !in_array($ewalletPilihan, $ewalletOptions, true)) $errors[] = 'Pilih jenis e-wallet.';
+
+    $pembayaranFinal = $pembayaran;
+    if ($pembayaran === 'Transfer Bank' && $bankPilihan !== '') $pembayaranFinal = 'Transfer Bank - ' . $bankPilihan;
+    if ($pembayaran === 'E-Wallet (DANA/OVO/GoPay)' && $ewalletPilihan !== '') $pembayaranFinal = 'E-Wallet - ' . $ewalletPilihan;
 
     if (empty($errors)) {
         $kode = 'LLC-' . date('ymd') . '-' . strtoupper(substr(uniqid(), -5));
@@ -93,7 +103,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $pdo->beginTransaction();
         try {
             $stmt = $pdo->prepare('INSERT INTO transaksi (kode, nama, telepon, email, alamat, catatan, metode_pembayaran, total, pelanggan_id) VALUES (?,?,?,?,?,?,?,?,?) RETURNING id');
-            $stmt->execute([$kode, $nama, $telepon, $email ?: null, $alamat, $catatan ?: null, $pembayaran, $total, $_SESSION['pelanggan_id'] ?? null]);
+            $stmt->execute([$kode, $nama, $telepon, $email ?: null, $alamat, $catatan ?: null, $pembayaranFinal, $total, $_SESSION['pelanggan_id'] ?? null]);
             $transaksiId = $stmt->fetchColumn();
 
             // Kalau lagi login, simpan/perbarui alamat default di akun
@@ -161,10 +171,26 @@ require __DIR__ . '/includes/header.php';
         <textarea name="catatan" rows="2"><?= h($_POST['catatan'] ?? '') ?></textarea>
       </label>
        <label>Metode Pembayaran
-        <select name="pembayaran" required>
+        <select name="pembayaran" id="selectPembayaran" required>
           <option value="" disabled <?= empty($_POST['pembayaran']) ? 'selected' : '' ?>>Pilih metode pembayaran</option>
           <?php foreach ($statusPembayaranOptions as $opsi): ?>
             <option value="<?= h($opsi) ?>" <?= ($_POST['pembayaran'] ?? '') === $opsi ? 'selected' : '' ?>><?= h($opsi) ?></option>
+          <?php endforeach; ?>
+        </select>
+      </label>
+      <label id="wrapBank" style="display:none;">Pilih Bank Tujuan
+        <select name="bank_pilihan" id="selectBank">
+          <option value="" disabled <?= empty($_POST['bank_pilihan']) ? 'selected' : '' ?>>Pilih bank</option>
+          <?php foreach ($bankOptions as $opsi): ?>
+            <option value="<?= h($opsi) ?>" <?= ($_POST['bank_pilihan'] ?? '') === $opsi ? 'selected' : '' ?>><?= h($opsi) ?></option>
+          <?php endforeach; ?>
+        </select>
+      </label>
+      <label id="wrapEwallet" style="display:none;">Pilih E-Wallet
+        <select name="ewallet_pilihan" id="selectEwallet">
+          <option value="" disabled <?= empty($_POST['ewallet_pilihan']) ? 'selected' : '' ?>>Pilih e-wallet</option>
+          <?php foreach ($ewalletOptions as $opsi): ?>
+            <option value="<?= h($opsi) ?>" <?= ($_POST['ewallet_pilihan'] ?? '') === $opsi ? 'selected' : '' ?>><?= h($opsi) ?></option>
           <?php endforeach; ?>
         </select>
       </label>

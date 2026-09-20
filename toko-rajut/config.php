@@ -17,6 +17,9 @@ try {
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
         ]
     );
+    // Paksa koneksi database selalu pakai waktu Indonesia (WIB), apa pun
+    // timezone default server hosting-nya (Railway dkk biasanya UTC).
+    $pdo->exec("SET TIME ZONE 'Asia/Jakarta'");
 } catch (PDOException $e) {
     die('Koneksi database gagal. Pastikan PostgreSQL berjalan, database "toko_rajutt" sudah dibuat di pgAdmin, dan db/rajut_postgres.sql sudah dijalankan di dalamnya. Detail: ' . $e->getMessage());
 }
