@@ -76,6 +76,84 @@ function sinkron_stok_pesanan(PDO $pdo, int $transaksiId, string $statusBaru) {
     }
 }
 
+// ===== STOK & STATUS PRODUK =====
+class StokTidakCukupException extends Exception {}
+
+// Produk dianggap aktif kalau kolom "aktif" bernilai true (atau kolomnya belum ada).
+function produk_aktif(array $p): bool {
+    if (!array_key_exists('aktif', $p)) return true;
+    return $p['aktif'] === true || $p['aktif'] === 't' || $p['aktif'] === '1' || $p['aktif'] === 1;
+}
+
+// Pesan masalah untuk satu produk yang dipesan sebanyak $qty, atau null kalau aman.
+function pesan_masalah_stok(array $p, int $qty): ?string {
+    if (!produk_aktif($p)) return '"' . $p['nama'] . '" sudah tidak tersedia.';
+    $stok = (int) $p['stok'];
+    if ($stok <= 0) return 'Stok "' . $p['nama'] . '" sedang habis.';
+    if ($qty > $stok) return 'Stok "' . $p['nama'] . '" hanya tersisa ' . $stok . ' pcs (kamu memesan ' . $qty . ' pcs).';
+    return null;
+}
+
+// Cek semua item ['produk' => row, 'jumlah' => n]. Jumlah dijumlahkan per produk
+// (produk yang sama dengan warna berbeda memakai stok yang sama).
+function cek_stok_items(array $items): array {
+    $perProduk = [];
+    foreach ($items as $it) {
+        $id = (int) $it['produk']['id'];
+        if (!isset($perProduk[$id])) $perProduk[$id] = ['produk' => $it['produk'], 'jumlah' => 0];
+        $perProduk[$id]['jumlah'] += (int) $it['jumlah'];
+    }
+    $pesan = [];
+    foreach ($perProduk as $d) {
+        $m = pesan_masalah_stok($d['produk'], $d['jumlah']);
+        if ($m !== null) $pesan[] = $m;
+    }
+    return $pesan;
+}
+
+function id_dari_key_keranjang($key): int {
+    return (int) explode('::', (string) $key, 2)[0];
+}
+
+// Samakan isi keranjang (session) dengan kondisi produk terbaru: produk nonaktif / habis
+// dibuang, jumlah melebihi stok dikurangi. Mengembalikan daftar pesan perubahan.
+function sinkron_keranjang(PDO $pdo): array {
+    $pesan = [];
+    $keranjang = $_SESSION['keranjang'] ?? [];
+    if (empty($keranjang)) return $pesan;
+
+    $ids = array_values(array_unique(array_map('id_dari_key_keranjang', array_keys($keranjang))));
+    $ph = implode(',', array_fill(0, count($ids), '?'));
+    $stmt = $pdo->prepare("SELECT id, nama, stok, aktif FROM produk WHERE id IN ($ph)");
+    $stmt->execute($ids);
+    $produk = [];
+    foreach ($stmt->fetchAll() as $p) { $produk[(int) $p['id']] = $p; }
+
+    $terpakai = [];
+    foreach ($keranjang as $key => $jumlah) {
+        $id = id_dari_key_keranjang($key);
+        $p = $produk[$id] ?? null;
+        if (!$p || !produk_aktif($p)) {
+            unset($_SESSION['keranjang'][$key]);
+            $pesan[] = ($p ? '"' . $p['nama'] . '"' : 'Salah satu produk') . ' sudah tidak tersedia dan dihapus dari keranjang.';
+            continue;
+        }
+        $sisa = (int) $p['stok'] - ($terpakai[$id] ?? 0);
+        if ($sisa <= 0) {
+            unset($_SESSION['keranjang'][$key]);
+            $pesan[] = 'Stok "' . $p['nama'] . '" habis, produk dihapus dari keranjang.';
+            continue;
+        }
+        if ($jumlah > $sisa) {
+            $_SESSION['keranjang'][$key] = $sisa;
+            $jumlah = $sisa;
+            $pesan[] = 'Jumlah "' . $p['nama'] . '" disesuaikan menjadi ' . $sisa . ' pcs sesuai stok tersisa.';
+        }
+        $terpakai[$id] = ($terpakai[$id] ?? 0) + $jumlah;
+    }
+    return $pesan;
+}
+
 function kategori_icon($nama) {
     $n = mb_strtolower((string) $nama);
     if (str_contains($n, 'tas') || str_contains($n, 'dompet')) {

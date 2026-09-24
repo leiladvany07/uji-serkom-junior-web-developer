@@ -16,7 +16,7 @@ if ($kategoriSlug !== '') {
 }
 
 $sql = 'SELECT produk.*, kategori.nama AS kategori_nama, kategori.slug AS kategori_slug
-        FROM produk JOIN kategori ON produk.kategori_id = kategori.id WHERE 1=1';
+        FROM produk JOIN kategori ON produk.kategori_id = kategori.id WHERE produk.aktif = TRUE';
 $params = [];
 
 if ($kategoriAktif) {
@@ -27,7 +27,7 @@ if ($kata !== '') {
     $sql .= ' AND produk.nama LIKE ?';
     $params[] = '%' . $kata . '%';
 }
-$sql .= ' ORDER BY produk.dibuat_pada DESC';
+$sql .= ' ORDER BY (produk.stok <= 0) ASC, produk.dibuat_pada DESC';
 
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
@@ -62,9 +62,10 @@ require __DIR__ . '/includes/header.php';
   <?php else: ?>
     <div class="product-grid">
       <?php foreach ($produkList as $p): ?>
-        <article class="product-card">
+        <article class="product-card <?= (int) $p['stok'] <= 0 ? 'product-card-habis' : '' ?>">
           <a href="produk_detail.php?slug=<?= h($p['slug']) ?>" class="product-thumb">
             <img src="assets/<?= h(first_image($p['gambar'])) ?>" alt="<?= h($p['nama']) ?>" loading="lazy">
+            <?php if ((int) $p['stok'] <= 0): ?><span class="product-badge product-badge-habis">Stok Habis</span><?php endif; ?>
           </a>
           <div class="product-body">
             <p class="product-kategori"><?= h($p['kategori_nama']) ?></p>

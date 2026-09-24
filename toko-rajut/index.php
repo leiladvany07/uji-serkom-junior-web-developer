@@ -3,6 +3,7 @@ require_once __DIR__ . '/config.php';
 
 $produkPilihan = $pdo->query('SELECT produk.*, kategori.nama AS kategori_nama
                                FROM produk JOIN kategori ON produk.kategori_id = kategori.id
+                               WHERE produk.aktif = TRUE
                                ORDER BY produk.dibuat_pada DESC LIMIT 4')->fetchAll();
 
 $page_title = 'Beranda';

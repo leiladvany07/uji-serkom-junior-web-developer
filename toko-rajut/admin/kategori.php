@@ -139,7 +139,8 @@ if ($editId > 0) {
               <td><?= (int) $k['jumlah_produk'] ?> produk</td>
               <td class="admin-actions">
                 <a class="btn-pill" href="kategori.php?edit=<?= $k['id'] ?>">Edit</a>
-                <form method="post" action="kategori.php" onsubmit="return confirm('Hapus kategori ini?');">
+                <form method="post" action="kategori.php"
+                      data-confirm-title="Hapus kategori ini?" data-confirm-text="<?= h($k['nama']) ?>" data-confirm-ok="Ya, Hapus" data-confirm-danger="1">
                   <input type="hidden" name="hapus_id" value="<?= $k['id'] ?>">
                   <button type="submit" class="link-danger">Hapus</button>
                 </form>
@@ -200,5 +201,6 @@ if ($editId > 0) {
   });
 })();
 </script>
+<script src="../js/script.js"></script>
 </body>
 </html>

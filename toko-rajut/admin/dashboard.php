@@ -2,17 +2,32 @@
 require_once __DIR__ . '/auth.php';
 require_login();
 
+// Pesan hasil aksi produk (nonaktifkan / coba hapus) dari halaman sebelumnya.
+$flashError = $_SESSION['flash_produk_error'] ?? '';
+$flashOk = $_SESSION['flash_produk_ok'] ?? '';
+unset($_SESSION['flash_produk_error'], $_SESSION['flash_produk_ok']);
+
 $produkList = $pdo->query('SELECT produk.*, kategori.nama AS kategori_nama
                             FROM produk JOIN kategori ON produk.kategori_id = kategori.id
                             ORDER BY produk.dibuat_pada DESC')->fetchAll();
 
 $totalPesan = $pdo->query('SELECT COUNT(*) FROM pesan')->fetchColumn();
 $totalProduk = count($produkList);
-$totalStok = array_sum(array_column($produkList, 'stok'));
+// Stok yang dihitung hanya milik produk aktif (yang benar-benar bisa dijual).
+$totalStok = array_sum(array_column(array_filter($produkList, 'produk_aktif'), 'stok'));
 $totalBaru = (int) $pdo->query("SELECT COUNT(*) FROM pesan WHERE status = 'baru' OR status IS NULL")->fetchColumn();
 $totalPesanan = (int) $pdo->query('SELECT COUNT(*) FROM transaksi')->fetchColumn();
 $totalBaruPesanan = (int) $pdo->query("SELECT COUNT(*) FROM transaksi WHERE status IS NULL OR status = '' OR status ILIKE '%baru%' OR status ILIKE '%menunggu%'")->fetchColumn();
 $totalOmzet = (float) $pdo->query('SELECT COALESCE(SUM(total),0) FROM transaksi')->fetchColumn();
+
+// ===== Peringatan stok (khusus produk yang masih aktif dijual) =====
+// "Habis" = stok 0, perlu segera diisi ulang. "Menipis" = stok tinggal sedikit, perlu dipantau.
+$BATAS_STOK_MENIPIS = 5;
+$produkAktifSaja = array_filter($produkList, 'produk_aktif');
+$produkHabis = array_values(array_filter($produkAktifSaja, fn($p) => (int) $p['stok'] <= 0));
+$produkMenipis = array_values(array_filter($produkAktifSaja, fn($p) => (int) $p['stok'] > 0 && (int) $p['stok'] <= $BATAS_STOK_MENIPIS));
+$totalProdukHabis = count($produkHabis);
+$totalProdukMenipis = count($produkMenipis);
 
 // ===== Grafik omzet 7 hari terakhir (ringkasan cepat, detail lengkap ada di Laporan) =====
 $dariGrafik = date('Y-m-d', strtotime('-6 days'));
@@ -53,6 +68,7 @@ $maxOmzetGrafik = max(1, ...array_values($grafikData));
   <a href="dashboard.php" class="admin-nav-item active">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
     <span>Produk</span>
+    <?php if ($totalProdukHabis > 0): ?><span class="admin-nav-badge" title="Produk aktif yang stoknya habis"><?= $totalProdukHabis ?></span><?php endif; ?>
   </a>
   <a href="kategori.php" class="admin-nav-item">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41L11 3.83A2 2 0 0 0 9.59 3.24H4a1 1 0 0 0-1 1v5.59a2 2 0 0 0 .59 1.41l9.58 9.59a2 2 0 0 0 2.82 0l4.6-4.6a2 2 0 0 0 0-2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
@@ -90,9 +106,33 @@ $maxOmzetGrafik = max(1, ...array_values($grafikData));
       <a href="produk_form.php" class="btn btn-primary">Tambah produk</a>
     </div>
 
+    <?php if ($flashOk): ?><div class="email-notif-banner email-notif-ok"><?= h($flashOk) ?></div><?php endif; ?>
+    <?php if ($flashError): ?>
+      <ul class="form-errors"><li><?= h($flashError) ?></li></ul>
+    <?php endif; ?>
+
+    <?php if ($totalProdukHabis > 0 || $totalProdukMenipis > 0): ?>
+    <div class="laporan-chart-card" style="margin-bottom:1.6rem;border-left:4px solid #A33131;">
+      <h2 class="pesanan-detail-subheading">Perlu Diisi Ulang</h2>
+      <?php if ($totalProdukHabis > 0): ?>
+        <p style="font-size:0.88rem;margin-bottom:0.4rem;">
+          <span class="produk-status nonaktif" style="background:#F6DCDC;color:#A33131;"><?= $totalProdukHabis ?> produk stoknya habis</span>
+          &mdash; <?= h(implode(', ', array_slice(array_column($produkHabis, 'nama'), 0, 5))) ?><?= count($produkHabis) > 5 ? ', dll.' : '' ?>
+        </p>
+      <?php endif; ?>
+      <?php if ($totalProdukMenipis > 0): ?>
+        <p style="font-size:0.88rem;">
+          <span class="produk-status" style="background:#F6E8D2;color:var(--clay-dark);"><?= $totalProdukMenipis ?> produk stoknya menipis (&le; <?= $BATAS_STOK_MENIPIS ?> pcs)</span>
+          &mdash; <?= h(implode(', ', array_slice(array_column($produkMenipis, 'nama'), 0, 5))) ?><?= count($produkMenipis) > 5 ? ', dll.' : '' ?>
+        </p>
+      <?php endif; ?>
+    </div>
+    <?php endif; ?>
+
     <div class="admin-stats">
       <div class="stat-card"><span class="stat-value"><?= $totalProduk ?></span><span class="stat-label">Total produk</span></div>
       <div class="stat-card"><span class="stat-value"><?= $totalStok ?></span><span class="stat-label">Total stok</span></div>
+      <div class="stat-card"><span class="stat-value"><?= $totalProdukHabis ?></span><span class="stat-label">Stok habis</span></div>
       <div class="stat-card"><span class="stat-value"><?= $totalPesanan ?></span><span class="stat-label">Pesanan masuk</span></div>
       <div class="stat-card"><span class="stat-value"><?= format_rupiah($totalOmzet) ?></span><span class="stat-label">Total omzet</span></div>
       <div class="stat-card"><span class="stat-value"><?= (int) $totalPesan ?></span><span class="stat-label">Pesan masuk</span></div>
@@ -117,18 +157,33 @@ $maxOmzetGrafik = max(1, ...array_values($grafikData));
 
     <table class="admin-table">
       <thead>
-        <tr><th>Produk</th><th>Kategori</th><th>Harga</th><th>Stok</th><th></th></tr>
+        <tr><th>Produk</th><th>Kategori</th><th>Harga</th><th>Stok</th><th>Status</th><th></th></tr>
       </thead>
       <tbody>
         <?php foreach ($produkList as $p): ?>
-        <tr>
+        <tr class="<?= produk_aktif($p) ? '' : 'baris-nonaktif' ?>">
           <td><?= h($p['nama']) ?></td>
           <td><?= h($p['kategori_nama']) ?></td>
           <td><?= format_rupiah($p['harga']) ?></td>
-          <td><?= (int) $p['stok'] ?></td>
+          <td><?= (int) $p['stok'] ?>
+            <?php if ((int) $p['stok'] <= 0): ?>
+              <span class="produk-status nonaktif" style="background:#F6DCDC;color:#A33131;">Habis</span>
+            <?php elseif ((int) $p['stok'] <= $BATAS_STOK_MENIPIS): ?>
+              <span class="produk-status" style="background:#F6E8D2;color:var(--clay-dark);">Menipis</span>
+            <?php endif; ?>
+          </td>
+          <td><span class="produk-status <?= produk_aktif($p) ? 'aktif' : 'nonaktif' ?>"><?= produk_aktif($p) ? 'Aktif' : 'Nonaktif' ?></span></td>
           <td class="admin-actions">
             <a href="produk_form.php?id=<?= $p['id'] ?>">Ubah</a>
-            <form method="post" action="produk_hapus.php" onsubmit="return confirm('Hapus produk ini?');" style="display:inline">
+            <form method="post" action="produk_status.php" style="display:inline"
+                  data-confirm-title="<?= produk_aktif($p) ? 'Nonaktifkan produk ini?' : 'Aktifkan kembali produk ini?' ?>"
+                  data-confirm-text="<?= h(produk_aktif($p) ? $p['nama'] . ' tidak akan tampil di toko, tapi riwayat pesanan tetap aman.' : $p['nama'] . ' akan tampil kembali di toko.') ?>"
+                  data-confirm-ok="<?= produk_aktif($p) ? 'Ya, Nonaktifkan' : 'Ya, Aktifkan' ?>">
+              <input type="hidden" name="id" value="<?= $p['id'] ?>">
+              <button type="submit" class="link-aktif"><?= produk_aktif($p) ? 'Nonaktifkan' : 'Aktifkan' ?></button>
+            </form>
+            <form method="post" action="produk_hapus.php" style="display:inline"
+                  data-confirm-title="Hapus produk ini?" data-confirm-text="<?= h($p['nama']) ?>" data-confirm-ok="Ya, Hapus" data-confirm-danger="1">
               <input type="hidden" name="id" value="<?= $p['id'] ?>">
               <button type="submit" class="link-danger">Hapus</button>
             </form>
@@ -136,7 +191,7 @@ $maxOmzetGrafik = max(1, ...array_values($grafikData));
         </tr>
         <?php endforeach; ?>
         <?php if (empty($produkList)): ?>
-        <tr><td colspan="5">Belum ada produk.</td></tr>
+        <tr><td colspan="6">Belum ada produk.</td></tr>
         <?php endif; ?>
       </tbody>
     </table>
@@ -172,5 +227,6 @@ $maxOmzetGrafik = max(1, ...array_values($grafikData));
   });
 })();
 </script>
+<script src="../js/script.js"></script>
 </body>
 </html>

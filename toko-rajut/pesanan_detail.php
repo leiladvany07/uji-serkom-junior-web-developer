@@ -1,120 +1,169 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) session_start();
 require_once __DIR__ . '/config.php';
-require_once __DIR__ . '/includes/pelanggan_auth.php';
 
-wajib_login_pelanggan();
+$slug = isset($_GET['slug']) ? trim($_GET['slug']) : '';
+$stmt = $pdo->prepare('SELECT produk.*, kategori.nama AS kategori_nama, kategori.slug AS kategori_slug
+                        FROM produk JOIN kategori ON produk.kategori_id = kategori.id
+                        WHERE produk.slug = ? AND produk.aktif = TRUE');
+$stmt->execute([$slug]);
+$produk = $stmt->fetch();
 
-function warna_status_pesanan_saya($status) {
-    $s = mb_strtolower((string) $status);
-    if ($s === '') return 'status-new';
-    if (str_contains($s, 'batal') || str_contains($s, 'tolak')) return 'status-danger';
-    if (str_contains($s, 'selesai') || str_contains($s, 'kirim') || str_contains($s, 'sukses')) return 'status-done';
-    if (str_contains($s, 'proses') || str_contains($s, 'konfirmasi') || str_contains($s, 'bayar')) return 'status-progress';
-    return 'status-new';
-}
-
-$id = (int) ($_GET['id'] ?? 0);
-
-// PENTING: pelanggan_id harus cocok dengan sesi yang sedang login, supaya
-// tidak bisa lihat pesanan orang lain hanya dengan mengganti angka di URL.
-$stmt = $pdo->prepare('SELECT * FROM transaksi WHERE id = ? AND pelanggan_id = ?');
-$stmt->execute([$id, $_SESSION['pelanggan_id']]);
-$transaksi = $stmt->fetch();
-
-if (!$transaksi) {
-    header('Location: pesanan_saya.php');
+if (!$produk) {
+    require __DIR__ . '/includes/header.php';
+    echo '<section class="section"><p class="empty-state">Produk tidak ditemukan. <a href="produk.php">Kembali ke katalog</a>.</p></section>';
+    require __DIR__ . '/includes/footer.php';
     exit;
 }
 
-$stmtItem = $pdo->prepare('SELECT ti.*, p.gambar FROM transaksi_item ti LEFT JOIN produk p ON p.id = ti.produk_id WHERE ti.transaksi_id = ? ORDER BY ti.id');
-$stmtItem->execute([$transaksi['id']]);
-$itemList = $stmtItem->fetchAll();
+$stmtTerkait = $pdo->prepare('SELECT * FROM produk WHERE kategori_id = ? AND id != ? AND aktif = TRUE LIMIT 3');
+$stmtTerkait->execute([$produk['kategori_id'], $produk['id']]);
+$produkTerkait = $stmtTerkait->fetchAll();
 
-$st = $transaksi['status'] ?: 'menunggu konfirmasi';
-
-$page_title = 'Pesanan ' . $transaksi['kode'];
+$page_title = $produk['nama'];
 require __DIR__ . '/includes/header.php';
 ?>
 
-<section class="section">
-  <a href="pesanan_saya.php" class="admin-back">&larr; Kembali ke Pesanan Saya</a>
+<nav class="breadcrumb">
+  <a href="index.php">Beranda</a> /
+  <a href="produk.php?kategori=<?= h($produk['kategori_slug']) ?>"><?= h($produk['kategori_nama']) ?></a> /
+  <span><?= h($produk['nama']) ?></span>
+</nav>
 
-  <div class="pesanan-detail-hero">
-    <div>
-      <p class="pesanan-detail-eyebrow">Kode pesanan</p>
-      <h1 class="pesanan-detail-kode"><?= h($transaksi['kode']) ?></h1>
-      <p class="pesanan-detail-tanggal"><?= h(date('d M Y, H:i', strtotime($transaksi['dibuat_pada']))) ?></p>
+<section class="product-detail">
+  <?php $gambarList = array_filter(array_map('trim', explode(',', $produk['gambar']))); ?>
+  <div class="product-slider" data-slider>
+    <div class="slider-track">
+      <?php foreach ($gambarList as $i => $g): ?>
+        <div class="slide"><img src="assets/<?= h($g) ?>" alt="<?= h($produk['nama']) ?> foto <?= $i + 1 ?>"></div>
+      <?php endforeach; ?>
     </div>
-    <span class="status-badge status-badge-lg <?= warna_status_pesanan_saya($st) ?>">
-      <span class="status-dot"></span><?= h(ucwords($st)) ?>
-    </span>
-  </div>
-
-  <p style="margin-bottom:1rem;"><a href="invoice.php?kode=<?= urlencode($transaksi['kode']) ?>" target="_blank" class="btn btn-outline">🖨 Cetak Invoice</a></p>
-
-  <div class="pesanan-main-card">
-    <div class="pesanan-main-grid">
-      <div class="pesanan-detail-items">
-        <h2 class="pesanan-detail-subheading">Item Pesanan</h2>
-        <?php foreach ($itemList as $it): ?>
-          <div class="pesanan-item-row">
-            <div class="pesanan-item-thumb">
-              <?php if (!empty($it['gambar'])): ?>
-                <img src="assets/<?= h(first_image($it['gambar'])) ?>" alt="<?= h($it['nama_produk']) ?>">
-              <?php else: ?>
-                <span class="pesanan-item-thumb-fallback">?</span>
-              <?php endif; ?>
-            </div>
-            <div class="pesanan-item-info">
-              <p class="pesanan-item-nama"><?= h($it['nama_produk']) ?></p>
-              <?php if (!empty($it['warna'])): ?><p class="pesanan-item-warna">Warna: <?= h($it['warna']) ?></p><?php endif; ?>
-              <p class="pesanan-item-harga"><?= format_rupiah($it['harga']) ?> &times; <?= (int) $it['jumlah'] ?></p>
-            </div>
-            <div class="pesanan-item-subtotal"><?= format_rupiah($it['subtotal']) ?></div>
-          </div>
+    <?php if (count($gambarList) > 1): ?>
+      <button type="button" class="slider-btn slider-prev" data-slider-prev aria-label="Foto sebelumnya">&#8249;</button>
+      <button type="button" class="slider-btn slider-next" data-slider-next aria-label="Foto berikutnya">&#8250;</button>
+      <div class="slider-dots" data-slider-dots>
+        <?php foreach ($gambarList as $i => $g): ?>
+          <button type="button" class="slider-dot <?= $i === 0 ? 'active' : '' ?>" data-slider-dot="<?= $i ?>" aria-label="Foto <?= $i + 1 ?>"></button>
         <?php endforeach; ?>
-        <div class="pesanan-total-row pesanan-total-row-flat">
-          <span>Total Pesanan</span>
-          <span class="cart-summary-total"><?= format_rupiah($transaksi['total']) ?></span>
-        </div>
       </div>
+    <?php endif; ?>
+  </div>
+  <div class="product-detail-info">
+    <p class="product-kategori"><?= h($produk['kategori_nama']) ?></p>
+    <h1 class="product-detail-nama"><?= h($produk['nama']) ?></h1>
+    <p class="product-detail-harga"><?= format_rupiah($produk['harga']) ?></p>
+    <p class="product-detail-desc"><?= nl2br(h($produk['deskripsi'])) ?></p>
+    <dl class="product-specs">
+      <?php $warnaList = parse_warna($produk['warna']); ?>
+      <?php if (count($warnaList) <= 1): ?>
+        <div><dt>Warna</dt><dd><?= h($produk['warna']) ?></dd></div>
+      <?php endif; ?>
+      <div><dt>Stok</dt><dd><?= (int) $produk['stok'] ?> pcs</dd></div>
+    </dl>
 
-      <div class="pesanan-detail-side">
-        <h2 class="pesanan-detail-subheading">Pengiriman</h2>
-        <div class="contact-info">
-          <div class="contact-item">
-            <span class="contact-label">Nama Penerima</span>
-            <span class="contact-value"><?= h($transaksi['nama']) ?></span>
+    <?php if ((int) $produk['stok'] > 0): ?>
+      <?php if (count($warnaList) > 1): ?>
+        <div class="produk-warna-pilih">
+          <span class="produk-warna-label">Pilih warna</span>
+          <div class="produk-warna-opsi">
+            <?php foreach ($warnaList as $i => $w): ?>
+              <label class="warna-chip">
+                <input type="radio" name="warna" value="<?= h($w) ?>" form="form-tambah-keranjang" <?= $i === 0 ? 'checked' : '' ?> required>
+                <span><?= h($w) ?></span>
+              </label>
+            <?php endforeach; ?>
           </div>
-          <div class="contact-item">
-            <span class="contact-label">Telepon / WhatsApp</span>
-            <span class="contact-value"><?= h($transaksi['telepon']) ?></span>
-          </div>
-          <div class="contact-item">
-            <span class="contact-label">Alamat Pengiriman</span>
-            <span class="contact-value"><?= nl2br(h($transaksi['alamat'])) ?></span>
-          </div>
-          <?php if (!empty($transaksi['metode_pembayaran'])): ?>
-          <div class="contact-item">
-            <span class="contact-label">Metode Pembayaran</span>
-            <span class="contact-value"><?= h($transaksi['metode_pembayaran']) ?></span>
-          </div>
-          <?php endif; ?>
-          <?php if (!empty($transaksi['ekspedisi']) || !empty($transaksi['no_resi'])): ?>
-          <div class="contact-item">
-            <span class="contact-label">Ekspedisi</span>
-            <span class="contact-value"><?= h($transaksi['ekspedisi'] ?: '-') ?></span>
-          </div>
-          <div class="contact-item">
-            <span class="contact-label">Nomor Resi</span>
-            <span class="contact-value"><?= h($transaksi['no_resi'] ?: '-') ?></span>
-          </div>
-          <?php endif; ?>
         </div>
-      </div>
-    </div>
+      <?php endif; ?>
+
+      <form method="post" action="keranjang.php" class="produk-beli-form" id="form-tambah-keranjang">
+        <input type="hidden" name="tambah_id" value="<?= (int) $produk['id'] ?>">
+        <input type="hidden" name="kembali" value="produk_detail.php?slug=<?= h($produk['slug']) ?>&ditambahkan=1">
+        <?php if (count($warnaList) <= 1): ?>
+          <input type="hidden" name="warna" value="<?= h($warnaList[0] ?? '') ?>">
+        <?php endif; ?>
+        <div class="produk-beli-qty">
+          <label for="jumlah-beli">Jumlah</label>
+          <input type="number" id="jumlah-beli" name="jumlah" value="1" min="1" max="<?= (int) $produk['stok'] ?>" form="form-tambah-keranjang">
+        </div>
+        <button type="submit" class="btn btn-primary">Tambah ke Keranjang</button>
+      </form>
+
+      <form method="get" action="checkout.php" class="produk-beli-langsung">
+        <input type="hidden" name="beli_id" value="<?= (int) $produk['id'] ?>">
+        <?php if (count($warnaList) <= 1): ?>
+          <input type="hidden" name="beli_warna" value="<?= h($warnaList[0] ?? '') ?>">
+        <?php else: ?>
+          <input type="hidden" name="beli_warna" value="<?= h($warnaList[0]) ?>" id="beli-warna-hidden">
+        <?php endif; ?>
+        <input type="hidden" name="beli_jumlah" value="1" id="beli-jumlah-hidden">
+        <button type="submit" class="btn btn-outline">Beli Sekarang</button>
+      </form>
+    <?php else: ?>
+      <p class="produk-stok-habis">Stok produk ini sedang habis.</p>
+    <?php endif; ?>
+
+    <a href="https://wa.me/6288989505932?text=Halo%2C%20saya%20tertarik%20dengan%20produk%20<?= urlencode($produk['nama']) ?>" class="btn btn-outline produk-wa-btn" target="_blank" rel="noopener">Tanya via WhatsApp</a>
   </div>
 </section>
+
+<script>
+(function(){
+  var jumlahInput = document.getElementById('jumlah-beli');
+  var beliJumlahHidden = document.getElementById('beli-jumlah-hidden');
+  if (jumlahInput && beliJumlahHidden) {
+    jumlahInput.addEventListener('input', function(){
+      beliJumlahHidden.value = jumlahInput.value || 1;
+    });
+  }
+  var warnaRadios = document.querySelectorAll('input[name="warna"]');
+  var beliWarnaHidden = document.getElementById('beli-warna-hidden');
+  if (warnaRadios.length && beliWarnaHidden) {
+    warnaRadios.forEach(function(r){
+      r.addEventListener('change', function(){
+        if (r.checked) beliWarnaHidden.value = r.value;
+      });
+    });
+  }
+})();
+</script>
+
+<?php if (isset($_GET['ditambahkan'])): ?>
+<div class="toast-notif" id="toastNotif">Produk ditambahkan ke keranjang.</div>
+<script>
+(function(){
+  var toast = document.getElementById('toastNotif');
+  if (!toast) return;
+  setTimeout(function(){ toast.classList.add('show'); }, 10);
+  setTimeout(function(){
+    toast.classList.remove('show');
+    setTimeout(function(){ toast.remove(); }, 300);
+  }, 2500);
+  if (window.history.replaceState) {
+    var url = new URL(window.location.href);
+    url.searchParams.delete('ditambahkan');
+    window.history.replaceState({}, '', url);
+  }
+})();
+</script>
+<?php endif; ?>
+
+<?php if (!empty($produkTerkait)): ?>
+<section class="section">
+  <h2 class="section-title">Produk sejenis</h2>
+  <div class="product-grid">
+    <?php foreach ($produkTerkait as $p): ?>
+      <article class="product-card">
+        <a href="produk_detail.php?slug=<?= h($p['slug']) ?>" class="product-thumb">
+          <img src="assets/<?= h(first_image($p['gambar'])) ?>" alt="<?= h($p['nama']) ?>" loading="lazy">
+        </a>
+        <div class="product-body">
+          <h3 class="product-nama"><a href="produk_detail.php?slug=<?= h($p['slug']) ?>"><?= h($p['nama']) ?></a></h3>
+          <p class="product-harga"><?= format_rupiah($p['harga']) ?></p>
+        </div>
+      </article>
+    <?php endforeach; ?>
+  </div>
+</section>
+<?php endif; ?>
 
 <?php require __DIR__ . '/includes/footer.php'; ?>

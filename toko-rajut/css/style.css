@@ -732,6 +732,9 @@ select.status-badge{
   background:var(--forest);color:#fff;font-size:0.68rem;font-weight:700;
   padding:0.25rem 0.6rem;border-radius:20px;
 }
+.product-badge-habis{background:#6b6558;}
+.product-card-habis .product-thumb img{filter:grayscale(60%);opacity:0.55;}
+.product-card-habis .product-nama a{color:var(--muted);}
 .product-card{box-shadow:var(--shadow-sm);}
 .product-card:hover{box-shadow:var(--shadow-md);}
 
@@ -1004,3 +1007,67 @@ select.status-badge{
 .omzet-labels{display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr));margin-top:0.5rem;}
 .omzet-labels span{display:flex;justify-content:center;}
 .omzet-labels em{font-style:normal;font-size:0.68rem;color:var(--muted);white-space:nowrap;}
+
+/* ===== Status produk (aktif / nonaktif) & info stok ===== */
+.produk-status{display:inline-block;padding:0.2rem 0.65rem;border-radius:20px;font-size:0.72rem;font-weight:700;}
+.produk-status.aktif{background:#E3EBDD;color:var(--forest);}
+.produk-status.nonaktif{background:#EFE6D8;color:var(--muted);}
+.baris-nonaktif td:not(.admin-actions){opacity:0.55;}
+.link-aktif{background:none;border:none;color:var(--forest);font-weight:600;cursor:pointer;font-size:0.82rem;}
+.admin-actions .link-aktif{padding:0.4rem 0.75rem;border-radius:20px;border:1px solid var(--line);background:var(--card);}
+.admin-actions .link-aktif:hover{border-color:var(--forest);background:#F1F5EC;}
+.form-info{background:#EFE3C8;color:var(--clay-dark);padding:0.75rem 0.9rem;border-radius:6px;font-size:0.85rem;list-style:none;margin-bottom:1.2rem;}
+.btn:disabled,.btn[disabled]{opacity:0.5;cursor:not-allowed;box-shadow:none;transform:none;}
+
+/* Tombol hapus kategori nonaktif kalau kategorinya masih dipakai produk */
+.admin-actions .link-danger:disabled,.admin-actions .link-danger:disabled:hover{opacity:0.4;cursor:not-allowed;border-color:var(--line);background:var(--card);}
+
+/* Tombol konfirmasi berbahaya (hapus) pada modal konfirmasi admin */
+.confirm-btn-ok.is-danger{background:#A33131;}
+.confirm-btn-ok.is-danger:hover{background:#862626;}
+
+
+/* ===== MOBILE: tombol Cari di dalam kolom pencarian (sisi kanan) ===== */
+@media (max-width:600px){
+  .search-form{position:relative;flex-direction:row;gap:0;}
+  .search-form input{width:100%;padding:0.8rem 5.6rem 0.8rem 0.95rem;}
+  .search-form button{position:absolute;top:4px;right:4px;bottom:4px;width:auto;padding:0 1.15rem;border-radius:5px;}
+}
+
+/* ===== MOBILE: tampilan admin (sidebar jadi header + menu geser) ===== */
+@media (max-width:900px){
+  .admin-layout{flex-direction:column;}
+  .admin-sidebar{width:100%;flex-direction:column;align-items:stretch;justify-content:flex-start;gap:0.85rem;padding:0.95rem 1rem 0.85rem;}
+  .admin-sidebar-brand{flex-direction:row;align-items:baseline;gap:0.65rem;padding-bottom:0;border-bottom:none;}
+  .admin-sidebar-tagline{margin:0;}
+  .admin-sidebar-footer{display:none;}
+
+  /* Menu: baris pil yang bisa digeser ke samping */
+  .admin-nav{flex-direction:row;flex-wrap:nowrap;gap:0.45rem;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;margin:0 -1rem;padding:0 1rem 0.1rem;}
+  .admin-nav::-webkit-scrollbar{display:none;}
+  .admin-nav-item{flex:0 0 auto;white-space:nowrap;gap:0.45rem;padding:0.5rem 0.9rem;border-radius:999px;background:rgba(255,255,255,0.08);font-size:0.82rem;}
+  .admin-nav-item.active{background:#EDE7D6;color:var(--forest);}
+  .admin-nav-item.active::before{display:none;}
+  .admin-nav-badge{margin-left:0.15rem;}
+
+  /* Isi halaman */
+  .admin-main{padding:1.2rem 1rem 2.2rem;}
+  .admin-header{flex-wrap:wrap;gap:0.75rem;}
+  .admin-header h1{font-size:1.35rem;}
+  .admin-header .btn-primary{padding:0.55rem 1.05rem;}
+  .admin-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:0.7rem;margin-bottom:1.3rem;}
+  .admin-stats .stat-card-inline .stat-card-icon{display:none;}
+  .admin-stats .stat-card-inline{padding:0.9rem 1rem;}
+
+  /* Tabel lebar: geser ke samping, tidak melebarkan halaman */
+  .admin-table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;white-space:nowrap;}
+
+  /* Filter laporan: rapi dua kolom */
+  .laporan-filter{padding:0.9rem;gap:0.7rem;}
+  .laporan-filter label{flex:1 1 calc(50% - 0.35rem);min-width:0;}
+  .laporan-filter label:nth-of-type(3){flex-basis:100%;}
+  .laporan-filter input[type="date"],.laporan-filter select{width:100%;box-sizing:border-box;}
+  .laporan-filter .btn{flex:1 1 100%;}
+  .laporan-filter .icon-btn{flex:1 1 calc(50% - 0.35rem);}
+  .omzet-y{min-width:2.9rem;}
+}

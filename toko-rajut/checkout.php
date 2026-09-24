@@ -17,23 +17,35 @@ if (isset($_GET['beli_id'])) {
 }
 
 $items = [];
+$infoStok = [];
 $total = 0;
 
 if ($langsung) {
     $stmt = $pdo->prepare('SELECT * FROM produk WHERE id = ?');
     $stmt->execute([$langsung['id']]);
     $p = $stmt->fetch();
-    if (!$p) {
+    if (!$p || !produk_aktif($p)) {
         unset($_SESSION['checkout_langsung']);
         header('Location: produk.php');
         exit;
     }
-    $stokTersedia = max(1, (int) $p['stok']);
-    $jumlah = min($langsung['jumlah'], $stokTersedia);
+    // Jumlah disesuaikan dengan stok tersisa. Kalau stok habis, checkout diblokir di bawah.
+    $jumlah = $langsung['jumlah'];
+    if ((int) $p['stok'] > 0 && $jumlah > (int) $p['stok']) {
+        $jumlah = (int) $p['stok'];
+        $infoStok[] = 'Jumlah "' . $p['nama'] . '" disesuaikan menjadi ' . $jumlah . ' pcs sesuai stok tersisa.';
+    }
     $subtotal = $p['harga'] * $jumlah;
     $items[] = ['produk' => $p, 'warna' => $langsung['warna'], 'jumlah' => $jumlah, 'subtotal' => $subtotal];
     $total = $subtotal;
 } else {
+    // Produk nonaktif / stok berubah: rapikan keranjang dan kembalikan pembeli ke halaman keranjang.
+    $pesanSinkron = sinkron_keranjang($pdo);
+    if ($pesanSinkron) {
+        $_SESSION['keranjang_pesan'] = $pesanSinkron;
+        header('Location: keranjang.php');
+        exit;
+    }
     $keranjang = $_SESSION['keranjang'] ?? [];
     if (empty($keranjang)) {
         header('Location: keranjang.php');
@@ -62,6 +74,8 @@ if ($langsung) {
     }
 }
 
+$masalahStok = cek_stok_items($items);
+
 $pelangganData = null;
 if (!empty($_SESSION['pelanggan_id'])) {
     $stmtP = $pdo->prepare('SELECT * FROM pelanggan WHERE id = ?');
@@ -79,6 +93,7 @@ $bankOptions = ['BCA', 'BRI', 'BNI', 'Mandiri', 'CIMB Niaga', 'Bank lainnya'];
 $ewalletOptions = ['DANA', 'OVO', 'GoPay', 'ShopeePay', 'E-wallet lainnya'];
 
 $errors = [];
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') $errors = $masalahStok;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $nama = trim($_POST['nama'] ?? '');
@@ -100,6 +115,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($pembayaran === 'Transfer Bank' && !in_array($bankPilihan, $bankOptions, true)) $errors[] = 'Pilih bank tujuan transfer.';
     if ($pembayaran === 'E-Wallet (DANA/OVO/GoPay)' && !in_array($ewalletPilihan, $ewalletOptions, true)) $errors[] = 'Pilih jenis e-wallet.';
 
+    $errors = array_merge($errors, $masalahStok);
+
     $pembayaranFinal = $pembayaran;
     if ($pembayaran === 'Transfer Bank' && $bankPilihan !== '') $pembayaranFinal = 'Transfer Bank - ' . $bankPilihan;
     if ($pembayaran === 'E-Wallet (DANA/OVO/GoPay)' && $ewalletPilihan !== '') $pembayaranFinal = 'E-Wallet - ' . $ewalletPilihan;
@@ -109,6 +126,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $pdo->beginTransaction();
         try {
+            // Kunci baris produk selama transaksi & cek ulang stok terbaru, supaya dua
+            // pembeli tidak bisa memesan stok yang sama pada saat bersamaan.
+            $butuh = [];
+            foreach ($items as $item) {
+                $pid = (int) $item['produk']['id'];
+                $butuh[$pid] = ($butuh[$pid] ?? 0) + $item['jumlah'];
+            }
+            if (empty($butuh)) throw new StokTidakCukupException('Tidak ada produk yang bisa dipesan.');
+            $ids = array_keys($butuh);
+            $ph = implode(',', array_fill(0, count($ids), '?'));
+            $stmtKunci = $pdo->prepare("SELECT id, nama, stok, aktif FROM produk WHERE id IN ($ph) ORDER BY id FOR UPDATE");
+            $stmtKunci->execute($ids);
+            $terkunci = [];
+            foreach ($stmtKunci->fetchAll() as $r) { $terkunci[(int) $r['id']] = $r; }
+            $masalahTerbaru = [];
+            foreach ($butuh as $pid => $qty) {
+                $m = pesan_masalah_stok($terkunci[$pid] ?? ['nama' => 'Produk', 'stok' => 0, 'aktif' => false], $qty);
+                if ($m !== null) $masalahTerbaru[] = $m;
+            }
+            if ($masalahTerbaru) throw new StokTidakCukupException(implode("\n", $masalahTerbaru));
+
             $stmt = $pdo->prepare('INSERT INTO transaksi (kode, nama, telepon, email, alamat, catatan, metode_pembayaran, total, pelanggan_id) VALUES (?,?,?,?,?,?,?,?,?) RETURNING id');
             $stmt->execute([$kode, $nama, $telepon, $email ?: null, $alamat, $catatan ?: null, $pembayaranFinal, $total, $_SESSION['pelanggan_id'] ?? null]);
             $transaksiId = $stmt->fetchColumn();
@@ -122,13 +160,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $stmtItem = $pdo->prepare('INSERT INTO transaksi_item (transaksi_id, produk_id, nama_produk, warna, harga, jumlah, subtotal) VALUES (?,?,?,?,?,?,?)');
-            $stmtStok = $pdo->prepare('UPDATE produk SET stok = GREATEST(stok - ?, 0) WHERE id = ?');
+            $stmtStok = $pdo->prepare('UPDATE produk SET stok = stok - ? WHERE id = ? AND stok >= ?');
 
             foreach ($items as $item) {
                 $p = $item['produk'];
                 $namaProduk = $p['nama'] . ($item['warna'] !== '' ? ' (' . $item['warna'] . ')' : '');
                 $stmtItem->execute([$transaksiId, $p['id'], $namaProduk, $item['warna'], $p['harga'], $item['jumlah'], $item['subtotal']]);
-                $stmtStok->execute([$item['jumlah'], $p['id']]);
+                $stmtStok->execute([$item['jumlah'], $p['id'], $item['jumlah']]);
+                if ($stmtStok->rowCount() === 0) {
+                    throw new StokTidakCukupException('Stok "' . $p['nama'] . '" tidak mencukupi.');
+                }
             }
 
             $pdo->commit();
@@ -139,6 +180,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             header('Location: checkout_sukses.php?kode=' . urlencode($kode));
             exit;
+        } catch (StokTidakCukupException $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            $masalahStok = explode("\n", $e->getMessage());
+            foreach ($masalahStok as $m) { $errors[] = $m; }
         } catch (Exception $e) {
             $pdo->rollBack();
             $errors[] = 'Terjadi kesalahan saat memproses pesanan. Silakan coba lagi.';
@@ -153,6 +198,12 @@ require __DIR__ . '/includes/header.php';
 
 <section class="section">
   <h1 class="section-title">Checkout</h1>
+
+  <?php if (!empty($infoStok)): ?>
+    <ul class="form-info">
+      <?php foreach ($infoStok as $m): ?><li><?= h($m) ?></li><?php endforeach; ?>
+    </ul>
+  <?php endif; ?>
 
   <?php if (!empty($errors)): ?>
     <ul class="form-errors">
@@ -225,7 +276,7 @@ require __DIR__ . '/includes/header.php';
           <?php endforeach; ?>
         </select>
       </label>
-      <button type="submit" class="btn btn-primary">Buat Pesanan</button>
+      <button type="submit" class="btn btn-primary" <?= !empty($masalahStok) ? 'disabled' : '' ?>>Buat Pesanan</button>
     </form>
 
     <div class="cart-summary">

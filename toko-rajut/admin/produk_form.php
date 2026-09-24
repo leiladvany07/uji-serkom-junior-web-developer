@@ -32,6 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($produk['nama'] === '') $errors[] = 'Nama produk wajib diisi.';
     if (!$produk['kategori_id']) $errors[] = 'Pilih kategori.';
     if ($produk['harga'] <= 0) $errors[] = 'Harga harus lebih dari 0.';
+    if ($produk['stok'] < 0) $errors[] = 'Stok tidak boleh negatif.';
 
     // Upload foto baru (kalau ada dipilih)
     $assetsDir = __DIR__ . '/../assets/';
@@ -162,7 +163,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <input type="number" name="harga" value="<?= h($produk['harga']) ?>" required>
         </label>
         <label>Stok
-          <input type="number" name="stok" value="<?= h($produk['stok']) ?>" required>
+          <input type="number" name="stok" min="0" value="<?= h($produk['stok']) ?>" required>
         </label>
       </div>
       <label>Warna
