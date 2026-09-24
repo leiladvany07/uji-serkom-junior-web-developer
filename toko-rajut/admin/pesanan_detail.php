@@ -32,6 +32,15 @@ if (!$transaksi) {
     exit;
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['simpan_pengiriman'])) {
+    $ekspedisi = trim($_POST['ekspedisi'] ?? '');
+    $noResi = trim($_POST['no_resi'] ?? '');
+    $pdo->prepare('UPDATE transaksi SET ekspedisi = ?, no_resi = ? WHERE id = ?')
+        ->execute([$ekspedisi ?: null, $noResi ?: null, $id]);
+    header('Location: pesanan_detail.php?id=' . $id);
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['set_status'])) {
     $new = trim($_POST['set_status']);
     if ($new !== '') {
@@ -232,6 +241,10 @@ $totalBaruPesan = (int) $pdo->query("SELECT COUNT(*) FROM pesan WHERE status = '
               <span>Chat via WhatsApp</span>
             </a>
           <?php endif; ?>
+          <a class="icon-btn icon-btn-block" href="../invoice.php?kode=<?= urlencode($transaksi['kode']) ?>&amp;dari=admin" target="_blank">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+            <span>Cetak Invoice</span>
+          </a>
         </div>
       </div>
     </div>
@@ -252,6 +265,18 @@ $totalBaruPesan = (int) $pdo->query("SELECT COUNT(*) FROM pesan WHERE status = '
         </form>
         <p style="font-size:.82rem;color:#6b7280;margin-top:.75rem;">
           Setiap kali status diubah, tombol kirim notifikasi WhatsApp ke pembeli akan muncul di atas.
+        </p>
+      </div>
+
+      <div class="pesanan-side-card" style="margin-top:1.2rem;">
+        <h2 class="pesanan-detail-subheading">Ekspedisi &amp; Resi</h2>
+        <form method="post" action="pesanan_detail.php?id=<?= $id ?>" class="pesanan-status-form pesanan-status-manual" style="flex-wrap:wrap;">
+          <input type="text" name="ekspedisi" placeholder="Ekspedisi (mis. JNE, J&amp;T)" value="<?= h($transaksi['ekspedisi'] ?? '') ?>">
+          <input type="text" name="no_resi" placeholder="Nomor resi" value="<?= h($transaksi['no_resi'] ?? '') ?>">
+          <button type="submit" name="simpan_pengiriman" value="1" class="btn-pill">Simpan</button>
+        </form>
+        <p style="font-size:.82rem;color:#6b7280;margin-top:.75rem;">
+          Kalau diisi, pelanggan yang login bisa melihat info ini di halaman "Pesanan Saya".
         </p>
       </div>
     </div>

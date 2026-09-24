@@ -53,3 +53,20 @@ document.addEventListener('DOMContentLoaded', function () {
   selectPembayaran.addEventListener('change', terapkanTampilan);
   terapkanTampilan(); // langsung terapkan saat halaman dimuat (misalnya setelah error validasi)
 });
+
+// ===== Pilihan alamat tersimpan / alamat lain di checkout =====
+document.addEventListener('DOMContentLoaded', function () {
+  var radios = document.querySelectorAll('input[name="mode_alamat"]');
+  var wrapBaru = document.getElementById('wrapAlamatBaru');
+  var inputAlamat = document.getElementById('inputAlamat');
+  if (!radios.length || !wrapBaru || !inputAlamat) return;
+
+  function terapkanAlamat() {
+    var lain = document.querySelector('input[name="mode_alamat"]:checked').value === 'lain';
+    wrapBaru.style.display = lain ? '' : 'none';
+    inputAlamat.required = lain;
+    if (lain) inputAlamat.focus();
+  }
+
+  radios.forEach(function (r) { r.addEventListener('change', terapkanAlamat); });
+});

@@ -69,6 +69,11 @@ if (!empty($_SESSION['pelanggan_id'])) {
     $pelangganData = $stmtP->fetch();
 }
 
+$alamatTersimpan = trim($pelangganData['alamat'] ?? '');
+$punyaAlamatTersimpan = ($pelangganData && $alamatTersimpan !== '');
+// Default: pakai alamat tersimpan (kalau ada). Setelah POST, ikuti pilihan terakhir.
+$modeAlamat = $punyaAlamatTersimpan ? (($_POST['mode_alamat'] ?? 'tersimpan') === 'lain' ? 'lain' : 'tersimpan') : 'lain';
+
 $statusPembayaranOptions = ['Transfer Bank', 'QRIS', 'E-Wallet (DANA/OVO/GoPay)', 'COD (Bayar di Tempat)'];
 $bankOptions = ['BCA', 'BRI', 'BNI', 'Mandiri', 'CIMB Niaga', 'Bank lainnya'];
 $ewalletOptions = ['DANA', 'OVO', 'GoPay', 'ShopeePay', 'E-wallet lainnya'];
@@ -79,7 +84,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $nama = trim($_POST['nama'] ?? '');
     $telepon = trim($_POST['telepon'] ?? '');
     $email = trim($_POST['email'] ?? '');
-    $alamat = trim($_POST['alamat'] ?? '');
+    // Kalau pilih "alamat tersimpan", ambil dari database (bukan dari input form).
+    $alamat = ($modeAlamat === 'tersimpan') ? $alamatTersimpan : trim($_POST['alamat'] ?? '');
+    $simpanAlamat = !empty($_POST['simpan_alamat']);
     $catatan = trim($_POST['catatan'] ?? '');
     $pembayaran = trim($_POST['pembayaran'] ?? '');
     $bankPilihan = trim($_POST['bank_pilihan'] ?? '');
@@ -106,9 +113,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$kode, $nama, $telepon, $email ?: null, $alamat, $catatan ?: null, $pembayaranFinal, $total, $_SESSION['pelanggan_id'] ?? null]);
             $transaksiId = $stmt->fetchColumn();
 
-            // Kalau lagi login, simpan/perbarui alamat default di akun
-            // biar checkout berikutnya otomatis terisi lagi.
-            if (!empty($_SESSION['pelanggan_id'])) {
+            // Simpan alamat ke akun hanya kalau: belum punya alamat tersimpan,
+            // atau pelanggan mencentang "jadikan alamat tersimpan" saat pakai alamat lain.
+            // Memakai alamat lain tanpa centang tidak menimpa alamat utama.
+            if (!empty($_SESSION['pelanggan_id']) && (!$punyaAlamatTersimpan || ($modeAlamat === 'lain' && $simpanAlamat))) {
                 $stmtAlamat = $pdo->prepare('UPDATE pelanggan SET alamat = ? WHERE id = ?');
                 $stmtAlamat->execute([$alamat, $_SESSION['pelanggan_id']]);
             }
@@ -158,15 +166,38 @@ require __DIR__ . '/includes/header.php';
         <input type="text" name="nama" value="<?= h($_POST['nama'] ?? $pelangganData['nama'] ?? '') ?>" required>
       </label>
       <label>Nomor Telepon / WhatsApp
-        <input type="text" name="telepon" value="<?= h($_POST['telepon'] ?? $pelangganData['telepon'] ?? '') ?>" required>
+        <input type="text" name="telepon" value="<?= h($_POST['telepon'] ?? $pelangganData['no_hp'] ?? '') ?>" required>
       </label>
       <label>Email (opsional)
         <input type="email" name="email" value="<?= h($_POST['email'] ?? $pelangganData['email'] ?? '') ?>">
       </label>
-      <label>Alamat Pengiriman
-        <textarea name="alamat" rows="3" required><?= h($_POST['alamat'] ?? $pelangganData['alamat'] ?? '') ?></textarea>
-      </label>
-      <?php if ($pelangganData): ?><p class="checkout-note" style="margin-top:-0.6rem;">Alamat ini otomatis tersimpan ke akun kamu buat belanja berikutnya.</p><?php endif; ?>
+      <?php if ($punyaAlamatTersimpan): ?>
+        <div class="alamat-pilihan">
+          <span class="alamat-pilihan-judul">Alamat Pengiriman</span>
+          <label class="alamat-radio">
+            <input type="radio" name="mode_alamat" value="tersimpan" <?= $modeAlamat === 'tersimpan' ? 'checked' : '' ?>>
+            <span>Gunakan alamat tersimpan</span>
+          </label>
+          <div class="alamat-tersimpan" id="boxAlamatTersimpan"><?= nl2br(h($alamatTersimpan)) ?></div>
+          <label class="alamat-radio">
+            <input type="radio" name="mode_alamat" value="lain" <?= $modeAlamat === 'lain' ? 'checked' : '' ?>>
+            <span>Gunakan alamat lain</span>
+          </label>
+        </div>
+      <?php endif; ?>
+      <div id="wrapAlamatBaru" <?= $modeAlamat === 'tersimpan' ? 'style="display:none;"' : '' ?>>
+        <label>Alamat Pengiriman<?= $punyaAlamatTersimpan ? ' Baru' : '' ?>
+          <textarea name="alamat" id="inputAlamat" rows="3" <?= $modeAlamat === 'lain' ? 'required' : '' ?>><?= h($_POST['alamat'] ?? ($punyaAlamatTersimpan ? '' : ($pelangganData['alamat'] ?? ''))) ?></textarea>
+        </label>
+        <?php if ($punyaAlamatTersimpan): ?>
+          <label class="alamat-radio alamat-simpan">
+            <input type="checkbox" name="simpan_alamat" value="1" <?= !empty($_POST['simpan_alamat']) ? 'checked' : '' ?>>
+            <span>Jadikan alamat tersimpan di akun</span>
+          </label>
+        <?php elseif ($pelangganData): ?>
+          <p class="checkout-note" style="margin-top:0.5rem;">Alamat ini otomatis tersimpan ke akun kamu buat belanja berikutnya.</p>
+        <?php endif; ?>
+      </div>
       <label>Catatan (opsional)
         <textarea name="catatan" rows="2"><?= h($_POST['catatan'] ?? '') ?></textarea>
       </label>

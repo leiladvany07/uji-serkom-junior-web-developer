@@ -34,6 +34,13 @@ if (!isset($pdo)) { require_once __DIR__ . '/../config.php'; }
 
       <a href="<?= BASE_URL ?>/kontak.php">Kontak</a>
 
+      <?php if (!empty($_SESSION['pelanggan_id'])): ?>
+        <a href="<?= BASE_URL ?>/pesanan_saya.php" class="nav-account-link">Pesanan Saya</a>
+        <a href="<?= BASE_URL ?>/logout.php" class="nav-account-link">Keluar</a>
+      <?php else: ?>
+        <a href="<?= BASE_URL ?>/login.php" class="nav-account-link">Masuk</a>
+      <?php endif; ?>
+
       <?php $jumlahKeranjang = array_sum($_SESSION['keranjang'] ?? []); ?>
       <a href="<?= BASE_URL ?>/keranjang.php" class="nav-cart" title="Keranjang" aria-label="Keranjang">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

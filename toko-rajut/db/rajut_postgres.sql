@@ -1,10 +1,3 @@
--- Skema database Toko Rajut "Rajutan Bu Sri" (PostgreSQL)
---
--- Cara pakai di pgAdmin:
--- 1. Buat database baru bernama "toko_rajut" (klik kanan Databases > Create > Database)
--- 2. Klik database "toko_rajut" tersebut supaya aktif/terhubung
--- 3. Buka Query Tool (klik kanan database > Query Tool)
--- 4. Tempel seluruh isi file ini lalu jalankan (Execute / F5)
 
 CREATE TABLE kategori (
   id SERIAL PRIMARY KEY,

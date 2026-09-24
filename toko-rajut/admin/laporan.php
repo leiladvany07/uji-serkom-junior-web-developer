@@ -14,25 +14,68 @@ if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $sampai)) $sampai = date('Y-m-d');
 $sampaiFull = $sampai . ' 23:59:59';
 $dariFull = $dari . ' 00:00:00';
 
+// ===== FILTER KATEGORI (opsional) =====
+$kategoriList = $pdo->query('SELECT id, nama FROM kategori ORDER BY nama')->fetchAll();
+$kategoriId = (int) ($_GET['kategori_id'] ?? 0);
+$pakaiFilterKategori = $kategoriId > 0;
+$namaKategoriTerpilih = '';
+if ($pakaiFilterKategori) {
+    foreach ($kategoriList as $k) {
+        if ((int) $k['id'] === $kategoriId) { $namaKategoriTerpilih = $k['nama']; break; }
+    }
+    // Kalau id kategori yang dikirim ternyata tidak valid, anggap tidak ada filter.
+    if ($namaKategoriTerpilih === '') { $kategoriId = 0; $pakaiFilterKategori = false; }
+}
+
 // ===== RINGKASAN =====
-$stmtSum = $pdo->prepare("SELECT COUNT(*) AS jumlah_transaksi, COALESCE(SUM(total),0) AS total_omzet
-    FROM transaksi WHERE dibuat_pada BETWEEN ? AND ?");
-$stmtSum->execute([$dariFull, $sampaiFull]);
+// Kalau filter kategori aktif, "total penjualan" dan "jumlah transaksi" dihitung
+// dari item pesanan yang produknya termasuk kategori tersebut (bukan total pesanan
+// utuh, karena satu pesanan bisa berisi produk dari beberapa kategori sekaligus).
+if ($pakaiFilterKategori) {
+    $stmtSum = $pdo->prepare("SELECT COUNT(DISTINCT t.id) AS jumlah_transaksi, COALESCE(SUM(ti.subtotal),0) AS total_omzet
+        FROM transaksi_item ti
+        JOIN transaksi t ON t.id = ti.transaksi_id
+        JOIN produk p ON p.id = ti.produk_id
+        WHERE t.dibuat_pada BETWEEN ? AND ? AND p.kategori_id = ?");
+    $stmtSum->execute([$dariFull, $sampaiFull, $kategoriId]);
+} else {
+    $stmtSum = $pdo->prepare("SELECT COUNT(*) AS jumlah_transaksi, COALESCE(SUM(total),0) AS total_omzet
+        FROM transaksi WHERE dibuat_pada BETWEEN ? AND ?");
+    $stmtSum->execute([$dariFull, $sampaiFull]);
+}
 $ringkasan = $stmtSum->fetch();
 $jumlahTransaksi = (int) $ringkasan['jumlah_transaksi'];
 $totalOmzet = (float) $ringkasan['total_omzet'];
 $rataRata = $jumlahTransaksi > 0 ? $totalOmzet / $jumlahTransaksi : 0;
 
-$stmtQty = $pdo->prepare("SELECT COALESCE(SUM(ti.jumlah),0) FROM transaksi_item ti
-    JOIN transaksi t ON t.id = ti.transaksi_id WHERE t.dibuat_pada BETWEEN ? AND ?");
-$stmtQty->execute([$dariFull, $sampaiFull]);
+if ($pakaiFilterKategori) {
+    $stmtQty = $pdo->prepare("SELECT COALESCE(SUM(ti.jumlah),0) FROM transaksi_item ti
+        JOIN transaksi t ON t.id = ti.transaksi_id
+        JOIN produk p ON p.id = ti.produk_id
+        WHERE t.dibuat_pada BETWEEN ? AND ? AND p.kategori_id = ?");
+    $stmtQty->execute([$dariFull, $sampaiFull, $kategoriId]);
+} else {
+    $stmtQty = $pdo->prepare("SELECT COALESCE(SUM(ti.jumlah),0) FROM transaksi_item ti
+        JOIN transaksi t ON t.id = ti.transaksi_id WHERE t.dibuat_pada BETWEEN ? AND ?");
+    $stmtQty->execute([$dariFull, $sampaiFull]);
+}
 $totalItemTerjual = (int) $stmtQty->fetchColumn();
 
 // ===== GRAFIK OMZET PER HARI =====
-$stmtChart = $pdo->prepare("SELECT DATE(dibuat_pada) AS tanggal, SUM(total) AS omzet
-    FROM transaksi WHERE dibuat_pada BETWEEN ? AND ?
-    GROUP BY DATE(dibuat_pada) ORDER BY tanggal");
-$stmtChart->execute([$dariFull, $sampaiFull]);
+if ($pakaiFilterKategori) {
+    $stmtChart = $pdo->prepare("SELECT DATE(t.dibuat_pada) AS tanggal, SUM(ti.subtotal) AS omzet
+        FROM transaksi_item ti
+        JOIN transaksi t ON t.id = ti.transaksi_id
+        JOIN produk p ON p.id = ti.produk_id
+        WHERE t.dibuat_pada BETWEEN ? AND ? AND p.kategori_id = ?
+        GROUP BY DATE(t.dibuat_pada) ORDER BY tanggal");
+    $stmtChart->execute([$dariFull, $sampaiFull, $kategoriId]);
+} else {
+    $stmtChart = $pdo->prepare("SELECT DATE(dibuat_pada) AS tanggal, SUM(total) AS omzet
+        FROM transaksi WHERE dibuat_pada BETWEEN ? AND ?
+        GROUP BY DATE(dibuat_pada) ORDER BY tanggal");
+    $stmtChart->execute([$dariFull, $sampaiFull]);
+}
 $chartRaw = [];
 foreach ($stmtChart->fetchAll() as $row) {
     $chartRaw[$row['tanggal']] = (float) $row['omzet'];
@@ -53,36 +96,71 @@ $totalTitik = count($chartData);
 $labelStep = max(1, (int) ceil($totalTitik / 12));
 
 // ===== PRODUK TERLARIS =====
-$stmtTop = $pdo->prepare("SELECT ti.nama_produk, SUM(ti.jumlah) AS total_qty, SUM(ti.subtotal) AS total_omzet_produk
-    FROM transaksi_item ti JOIN transaksi t ON t.id = ti.transaksi_id
-    WHERE t.dibuat_pada BETWEEN ? AND ?
-    GROUP BY ti.nama_produk ORDER BY total_qty DESC LIMIT 5");
-$stmtTop->execute([$dariFull, $sampaiFull]);
+if ($pakaiFilterKategori) {
+    $stmtTop = $pdo->prepare("SELECT ti.nama_produk, SUM(ti.jumlah) AS total_qty, SUM(ti.subtotal) AS total_omzet_produk
+        FROM transaksi_item ti JOIN transaksi t ON t.id = ti.transaksi_id
+        JOIN produk p ON p.id = ti.produk_id
+        WHERE t.dibuat_pada BETWEEN ? AND ? AND p.kategori_id = ?
+        GROUP BY ti.nama_produk ORDER BY total_qty DESC LIMIT 5");
+    $stmtTop->execute([$dariFull, $sampaiFull, $kategoriId]);
+} else {
+    $stmtTop = $pdo->prepare("SELECT ti.nama_produk, SUM(ti.jumlah) AS total_qty, SUM(ti.subtotal) AS total_omzet_produk
+        FROM transaksi_item ti JOIN transaksi t ON t.id = ti.transaksi_id
+        WHERE t.dibuat_pada BETWEEN ? AND ?
+        GROUP BY ti.nama_produk ORDER BY total_qty DESC LIMIT 5");
+    $stmtTop->execute([$dariFull, $sampaiFull]);
+}
 $produkTerlaris = $stmtTop->fetchAll();
 $maxQtyTerlaris = max(1, ...array_column($produkTerlaris, 'total_qty') ?: [1]);
 
 // ===== DAFTAR TRANSAKSI (dengan pagination) =====
+// Kalau filter kategori aktif, daftar dibatasi ke pesanan yang mengandung
+// minimal satu produk dari kategori tersebut.
 $perPage = 10;
 $page = max(1, (int) ($_GET['page'] ?? 1));
 $offset = ($page - 1) * $perPage;
 
-$stmtCount = $pdo->prepare('SELECT COUNT(*) FROM transaksi WHERE dibuat_pada BETWEEN ? AND ?');
-$stmtCount->execute([$dariFull, $sampaiFull]);
+if ($pakaiFilterKategori) {
+    $stmtCount = $pdo->prepare("SELECT COUNT(DISTINCT t.id) FROM transaksi t
+        JOIN transaksi_item ti ON ti.transaksi_id = t.id
+        JOIN produk p ON p.id = ti.produk_id
+        WHERE t.dibuat_pada BETWEEN ? AND ? AND p.kategori_id = ?");
+    $stmtCount->execute([$dariFull, $sampaiFull, $kategoriId]);
+} else {
+    $stmtCount = $pdo->prepare('SELECT COUNT(*) FROM transaksi WHERE dibuat_pada BETWEEN ? AND ?');
+    $stmtCount->execute([$dariFull, $sampaiFull]);
+}
 $totalTransaksiFilter = (int) $stmtCount->fetchColumn();
 $totalPages = max(1, (int) ceil($totalTransaksiFilter / $perPage));
 
-$stmtList = $pdo->prepare("SELECT t.*,
-    (SELECT COALESCE(SUM(jumlah),0) FROM transaksi_item WHERE transaksi_id = t.id) AS total_item
-    FROM transaksi t WHERE t.dibuat_pada BETWEEN ? AND ?
-    ORDER BY t.dibuat_pada DESC LIMIT ? OFFSET ?");
-$stmtList->bindValue(1, $dariFull);
-$stmtList->bindValue(2, $sampaiFull);
-$stmtList->bindValue(3, $perPage, PDO::PARAM_INT);
-$stmtList->bindValue(4, $offset, PDO::PARAM_INT);
+if ($pakaiFilterKategori) {
+    $stmtList = $pdo->prepare("SELECT DISTINCT t.*,
+        (SELECT COALESCE(SUM(jumlah),0) FROM transaksi_item WHERE transaksi_id = t.id) AS total_item
+        FROM transaksi t
+        JOIN transaksi_item ti ON ti.transaksi_id = t.id
+        JOIN produk p ON p.id = ti.produk_id
+        WHERE t.dibuat_pada BETWEEN ? AND ? AND p.kategori_id = ?
+        ORDER BY t.dibuat_pada DESC LIMIT ? OFFSET ?");
+    $stmtList->bindValue(1, $dariFull);
+    $stmtList->bindValue(2, $sampaiFull);
+    $stmtList->bindValue(3, $kategoriId, PDO::PARAM_INT);
+    $stmtList->bindValue(4, $perPage, PDO::PARAM_INT);
+    $stmtList->bindValue(5, $offset, PDO::PARAM_INT);
+} else {
+    $stmtList = $pdo->prepare("SELECT t.*,
+        (SELECT COALESCE(SUM(jumlah),0) FROM transaksi_item WHERE transaksi_id = t.id) AS total_item
+        FROM transaksi t WHERE t.dibuat_pada BETWEEN ? AND ?
+        ORDER BY t.dibuat_pada DESC LIMIT ? OFFSET ?");
+    $stmtList->bindValue(1, $dariFull);
+    $stmtList->bindValue(2, $sampaiFull);
+    $stmtList->bindValue(3, $perPage, PDO::PARAM_INT);
+    $stmtList->bindValue(4, $offset, PDO::PARAM_INT);
+}
 $stmtList->execute();
 $transaksiList = $stmtList->fetchAll();
 
-$queryStringPage = http_build_query(['dari' => $dari, 'sampai' => $sampai]);
+$queryStringPage = http_build_query(['dari' => $dari, 'sampai' => $sampai, 'kategori_id' => $kategoriId ?: '']);
+$queryStringCetak = http_build_query(['dari' => $dari, 'sampai' => $sampai, 'kategori_id' => $kategoriId ?: '']);
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -150,12 +228,27 @@ $queryStringPage = http_build_query(['dari' => $dari, 'sampai' => $sampai]);
       <label>Sampai
         <input type="date" name="sampai" value="<?= h($sampai) ?>">
       </label>
+      <label>Kategori
+        <select name="kategori_id">
+          <option value="0">Semua kategori</option>
+          <?php foreach ($kategoriList as $k): ?>
+            <option value="<?= $k['id'] ?>" <?= $kategoriId === (int) $k['id'] ? 'selected' : '' ?>><?= h($k['nama']) ?></option>
+          <?php endforeach; ?>
+        </select>
+      </label>
       <button type="submit" class="btn btn-primary">Terapkan</button>
       <a href="laporan_export.php?<?= h($queryStringPage) ?>" class="icon-btn">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
         <span>Export CSV</span>
       </a>
+      <a href="laporan_cetak.php?<?= h($queryStringCetak) ?>" target="_blank" class="icon-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+        <span>Cetak Laporan</span>
+      </a>
     </form>
+    <?php if ($pakaiFilterKategori): ?>
+      <p class="checkout-note" style="margin-top:-0.8rem;margin-bottom:1rem;">Menampilkan data untuk kategori: <strong><?= h($namaKategoriTerpilih) ?></strong>. Total penjualan &amp; item terjual dihitung dari produk kategori ini saja.</p>
+    <?php endif; ?>
 
     <div class="admin-stats">
       <div class="stat-card stat-card-inline">
@@ -190,17 +283,38 @@ $queryStringPage = http_build_query(['dari' => $dari, 'sampai' => $sampai]);
         <?php if ($totalOmzet <= 0): ?>
           <p class="empty-state">Belum ada transaksi di rentang tanggal ini.</p>
         <?php else: ?>
-          <div class="laporan-chart">
-            <?php $i = 0; foreach ($chartData as $tgl => $omzet): $i++; $tinggi = $omzet > 0 ? max(4, round(($omzet / $maxOmzetHarian) * 100)) : 2; ?>
-              <div class="laporan-bar-wrap" title="<?= h(date('d M', strtotime($tgl))) ?>: <?= format_rupiah($omzet) ?>">
-                <div class="laporan-bar" style="height:<?= $tinggi ?>%"></div>
-                <?php if ($i % $labelStep === 0 || $i === $totalTitik): ?>
-                  <span class="laporan-bar-label"><?= h(date('d/m', strtotime($tgl))) ?></span>
-                <?php else: ?>
-                  <span class="laporan-bar-label">&nbsp;</span>
-                <?php endif; ?>
+          <?php
+            // Sumbu Y dibulatkan ke atas supaya garis bantu angkanya "bulat".
+            $mag = 10 ** floor(log10($maxOmzetHarian));
+            $langkah = $mag / 2;
+            $axisMax = max($langkah, ceil($maxOmzetHarian / $langkah) * $langkah);
+            $hariTertinggi = array_search($maxOmzetHarian, $chartData);
+            $ringkas = function ($n) {
+                if ($n >= 1000000) return 'Rp' . rtrim(rtrim(number_format($n / 1000000, 1, ',', '.'), '0'), ',') . ' jt';
+                if ($n >= 1000) return 'Rp' . round($n / 1000) . ' rb';
+                return 'Rp' . round($n);
+            };
+          ?>
+          <div class="omzet-wrap">
+            <div class="omzet-y">
+              <span><?= h($ringkas($axisMax)) ?></span>
+              <span><?= h($ringkas($axisMax / 2)) ?></span>
+              <span>0</span>
+            </div>
+            <div class="omzet-body">
+              <div class="omzet-chart" style="--n:<?= $totalTitik ?>">
+                <?php foreach ($chartData as $tgl => $omzet): $tinggi = $omzet > 0 ? max(2, ($omzet / $axisMax) * 100) : 0; ?>
+                  <div class="omzet-col" title="<?= h(date('d M Y', strtotime($tgl))) ?>: <?= format_rupiah($omzet) ?>">
+                    <div class="omzet-bar<?= $tgl === $hariTertinggi ? ' is-top' : '' ?>" style="height:<?= round($tinggi, 1) ?>%"></div>
+                  </div>
+                <?php endforeach; ?>
               </div>
-            <?php endforeach; ?>
+              <div class="omzet-labels" style="--n:<?= $totalTitik ?>">
+                <?php $i = 0; foreach ($chartData as $tgl => $omzet): ?>
+                  <span><?php if ($i % $labelStep === 0): ?><em><?= h(date('d/m', strtotime($tgl))) ?></em><?php endif; ?></span>
+                <?php $i++; endforeach; ?>
+              </div>
+            </div>
           </div>
         <?php endif; ?>
       </div>

@@ -167,8 +167,8 @@ require __DIR__ . '/includes/header.php';
     </div>
     <div class="order-step">
       <span class="order-step-num">2</span>
-      <p class="order-step-title">Isi Data & Checkout</p>
-      <p class="order-step-desc">Lengkapi nama, kontak, dan alamat pengiriman di halaman checkout — tanpa perlu daftar akun.</p>
+      <p class="order-step-title">Checkout & Isi Data</p>
+      <p class="order-step-desc">Buka halaman checkout, lalu lengkapi nama, kontak, dan alamat pengiriman — bisa sebagai tamu, atau masuk ke akun biar alamat tersimpan.</p>
     </div>
     <div class="order-step">
       <span class="order-step-num">3</span>
@@ -178,7 +178,7 @@ require __DIR__ . '/includes/header.php';
     <div class="order-step">
       <span class="order-step-num">4</span>
       <p class="order-step-title">Produk Dikirim</p>
-      <p class="order-step-desc">Pesanan diproses dan dikirim ke alamatmu beserta nomor resi.</p>
+      <p class="order-step-desc">Pesanan diproses dan dikirim beserta nomor resi. Punya akun? Pantau statusnya di Pesanan Saya.</p>
     </div>
   </div>
 </section>

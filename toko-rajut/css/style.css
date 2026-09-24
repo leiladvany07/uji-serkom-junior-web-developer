@@ -398,6 +398,7 @@ button,input,select,textarea{font-family:inherit;font-size:1rem;}
 .laporan-filter{display:flex;align-items:flex-end;gap:0.9rem;flex-wrap:wrap;margin-bottom:1.3rem;}
 .laporan-filter label{display:flex;flex-direction:column;gap:0.35rem;font-size:0.8rem;color:var(--muted);}
 .laporan-filter input[type="date"]{padding:0.6rem 0.8rem;border:1px solid var(--line);border-radius:6px;background:var(--card);font-size:0.85rem;}
+.laporan-filter select{padding:0.6rem 0.8rem;border:1px solid var(--line);border-radius:6px;background:var(--card);font-size:0.85rem;}
 
 .laporan-main-grid{display:grid;grid-template-columns:1.6fr 1fr;gap:1.4rem;margin-top:1.2rem;align-items:start;}
 @media (max-width:900px){
@@ -960,3 +961,46 @@ select.status-badge{
   padding:0.5rem 1rem;font-weight:700;font-size:0.82rem;cursor:pointer;
 }
 .pesanan-live-banner button:hover{background:#164f29;}
+
+/* ===== Pilihan alamat di checkout (tersimpan / lain) ===== */
+.alamat-pilihan{display:flex;flex-direction:column;gap:0.55rem;}
+.alamat-pilihan-judul{font-size:0.85rem;color:var(--muted);}
+.contact-form .alamat-radio{flex-direction:row;align-items:center;gap:0.55rem;color:var(--ink);font-size:0.9rem;cursor:pointer;}
+.contact-form .alamat-radio input{padding:0;width:auto;margin:0;accent-color:var(--clay);}
+.alamat-tersimpan{margin:-0.15rem 0 0.15rem 1.65rem;padding:0.7rem 0.9rem;background:#fff;border:1px solid var(--line);border-radius:6px;font-size:0.88rem;line-height:1.55;color:var(--ink);}
+.contact-form .alamat-simpan{margin-top:0.6rem;font-size:0.84rem;}
+
+/* ===== Halaman masuk & daftar pelanggan: form di tengah ===== */
+.auth-page{padding-top:2.5rem;}
+.auth-page .section-title{text-align:center;}
+.auth-page .contact-layout{grid-template-columns:minmax(0,460px);justify-content:center;}
+.auth-page .form-errors{max-width:460px;margin-left:auto;margin-right:auto;}
+
+/* ===== Laporan penjualan: tampilan lebih rapi ===== */
+/* Filter dalam satu kartu, tinggi kontrol seragam, tombol aksi di kanan */
+.laporan-filter{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:1rem 1.2rem;box-shadow:var(--shadow-sm);gap:1rem;}
+.laporan-filter input[type="date"],.laporan-filter select{height:42px;padding:0 0.85rem;}
+.laporan-filter .btn,.laporan-filter .icon-btn{height:42px;padding-top:0;padding-bottom:0;display:inline-flex;align-items:center;justify-content:center;gap:0.45rem;margin:0;}
+.laporan-filter .icon-btn:first-of-type{margin-left:auto;}
+@media (max-width:900px){.laporan-filter .icon-btn:first-of-type{margin-left:0;}}
+
+/* Kartu ringkasan: angka tidak lagi keluar kartu */
+.admin-stats .stat-card-inline{padding:1rem 1.1rem;min-width:0;}
+.admin-stats .stat-card-inline .stat-card-text{min-width:0;}
+.admin-stats .stat-card-inline .stat-value{font-size:clamp(1.1rem,1.55vw,1.4rem);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.admin-stats .stat-card-inline .stat-label{font-weight:600;}
+.stat-card-icon{width:40px;height:40px;}
+
+/* Grafik omzet harian: area batang & label terpisah, batang seragam */
+.omzet-wrap{display:flex;gap:0.7rem;margin-top:0.6rem;}
+.omzet-y{display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;height:200px;font-size:0.68rem;color:var(--muted);text-align:right;min-width:3.6rem;line-height:1;}
+.omzet-body{flex:1;min-width:0;}
+.omzet-chart{display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr));align-items:end;height:200px;border-bottom:1px solid var(--line);
+  background:linear-gradient(to bottom,var(--line) 1px,transparent 1px) 0 0/100% 50% repeat-y;}
+.omzet-col{height:100%;display:flex;align-items:flex-end;justify-content:center;}
+.omzet-bar{width:70%;max-width:26px;background:#C9906F;border-radius:4px 4px 0 0;transition:background .15s ease;}
+.omzet-col:hover .omzet-bar{background:var(--clay-dark);}
+.omzet-bar.is-top{background:var(--clay);}
+.omzet-labels{display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr));margin-top:0.5rem;}
+.omzet-labels span{display:flex;justify-content:center;}
+.omzet-labels em{font-style:normal;font-size:0.68rem;color:var(--muted);white-space:nowrap;}

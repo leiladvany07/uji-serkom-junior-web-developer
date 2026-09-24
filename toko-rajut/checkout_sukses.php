@@ -76,6 +76,7 @@ require __DIR__ . '/includes/header.php';
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.6 6.3A8.9 8.9 0 0 0 12 4a8.9 8.9 0 0 0-7.8 13.4L3 21l3.7-1.2A8.9 8.9 0 0 0 12 21a8.9 8.9 0 0 0 5.6-15.7zM12 19.3a7.3 7.3 0 0 1-3.9-1.1l-.3-.2-2.6.9.8-2.5-.2-.3A7.3 7.3 0 1 1 19.3 12 7.3 7.3 0 0 1 12 19.3z"/></svg>
         <span>Konfirmasi via WhatsApp</span>
       </a>
+      <a href="invoice.php?kode=<?= urlencode($transaksi['kode']) ?>" target="_blank" class="btn btn-outline">🖨 Cetak Invoice</a>
       <a href="produk.php" class="btn btn-primary">Lanjut Belanja</a>
       <a href="index.php" class="btn btn-outline">Kembali ke Beranda</a>
     </div>

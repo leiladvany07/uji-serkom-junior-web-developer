@@ -9,11 +9,24 @@ if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $sampai)) $sampai = date('Y-m-d');
 $dariFull = $dari . ' 00:00:00';
 $sampaiFull = $sampai . ' 23:59:59';
 
-$stmt = $pdo->prepare("SELECT t.kode, t.nama, t.telepon, t.email, t.total, t.status, t.dibuat_pada,
-    (SELECT COALESCE(SUM(jumlah),0) FROM transaksi_item WHERE transaksi_id = t.id) AS total_item
-    FROM transaksi t WHERE t.dibuat_pada BETWEEN ? AND ?
-    ORDER BY t.dibuat_pada ASC");
-$stmt->execute([$dariFull, $sampaiFull]);
+$kategoriId = (int) ($_GET['kategori_id'] ?? 0);
+
+if ($kategoriId > 0) {
+    $stmt = $pdo->prepare("SELECT DISTINCT t.kode, t.nama, t.telepon, t.email, t.total, t.status, t.dibuat_pada,
+        (SELECT COALESCE(SUM(jumlah),0) FROM transaksi_item WHERE transaksi_id = t.id) AS total_item
+        FROM transaksi t
+        JOIN transaksi_item ti ON ti.transaksi_id = t.id
+        JOIN produk p ON p.id = ti.produk_id
+        WHERE t.dibuat_pada BETWEEN ? AND ? AND p.kategori_id = ?
+        ORDER BY t.dibuat_pada ASC");
+    $stmt->execute([$dariFull, $sampaiFull, $kategoriId]);
+} else {
+    $stmt = $pdo->prepare("SELECT t.kode, t.nama, t.telepon, t.email, t.total, t.status, t.dibuat_pada,
+        (SELECT COALESCE(SUM(jumlah),0) FROM transaksi_item WHERE transaksi_id = t.id) AS total_item
+        FROM transaksi t WHERE t.dibuat_pada BETWEEN ? AND ?
+        ORDER BY t.dibuat_pada ASC");
+    $stmt->execute([$dariFull, $sampaiFull]);
+}
 $rows = $stmt->fetchAll();
 
 header('Content-Type: text/csv; charset=UTF-8');

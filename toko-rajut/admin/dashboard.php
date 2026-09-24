@@ -13,6 +13,25 @@ $totalBaru = (int) $pdo->query("SELECT COUNT(*) FROM pesan WHERE status = 'baru'
 $totalPesanan = (int) $pdo->query('SELECT COUNT(*) FROM transaksi')->fetchColumn();
 $totalBaruPesanan = (int) $pdo->query("SELECT COUNT(*) FROM transaksi WHERE status IS NULL OR status = '' OR status ILIKE '%baru%' OR status ILIKE '%menunggu%'")->fetchColumn();
 $totalOmzet = (float) $pdo->query('SELECT COALESCE(SUM(total),0) FROM transaksi')->fetchColumn();
+
+// ===== Grafik omzet 7 hari terakhir (ringkasan cepat, detail lengkap ada di Laporan) =====
+$dariGrafik = date('Y-m-d', strtotime('-6 days'));
+$sampaiGrafik = date('Y-m-d');
+$stmtGrafik = $pdo->prepare("SELECT DATE(dibuat_pada) AS tanggal, SUM(total) AS omzet
+    FROM transaksi WHERE dibuat_pada BETWEEN ? AND ?
+    GROUP BY DATE(dibuat_pada) ORDER BY tanggal");
+$stmtGrafik->execute([$dariGrafik . ' 00:00:00', $sampaiGrafik . ' 23:59:59']);
+$grafikRaw = [];
+foreach ($stmtGrafik->fetchAll() as $row) { $grafikRaw[$row['tanggal']] = (float) $row['omzet']; }
+$grafikData = [];
+$cursorGrafik = strtotime($dariGrafik);
+$akhirGrafik = strtotime($sampaiGrafik);
+while ($cursorGrafik <= $akhirGrafik) {
+    $key = date('Y-m-d', $cursorGrafik);
+    $grafikData[$key] = $grafikRaw[$key] ?? 0;
+    $cursorGrafik = strtotime('+1 day', $cursorGrafik);
+}
+$maxOmzetGrafik = max(1, ...array_values($grafikData));
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -77,6 +96,23 @@ $totalOmzet = (float) $pdo->query('SELECT COALESCE(SUM(total),0) FROM transaksi'
       <div class="stat-card"><span class="stat-value"><?= $totalPesanan ?></span><span class="stat-label">Pesanan masuk</span></div>
       <div class="stat-card"><span class="stat-value"><?= format_rupiah($totalOmzet) ?></span><span class="stat-label">Total omzet</span></div>
       <div class="stat-card"><span class="stat-value"><?= (int) $totalPesan ?></span><span class="stat-label">Pesan masuk</span></div>
+    </div>
+
+    <div class="laporan-chart-card" style="margin-bottom:1.6rem;">
+      <h2 class="pesanan-detail-subheading">Omzet 7 Hari Terakhir</h2>
+      <?php if ($totalOmzet <= 0): ?>
+        <p class="empty-state">Belum ada transaksi.</p>
+      <?php else: ?>
+        <div class="laporan-chart">
+          <?php foreach ($grafikData as $tgl => $omzet): $tinggi = $omzet > 0 ? max(4, round(($omzet / $maxOmzetGrafik) * 100)) : 2; ?>
+            <div class="laporan-bar-wrap" title="<?= h(date('d M', strtotime($tgl))) ?>: <?= format_rupiah($omzet) ?>">
+              <div class="laporan-bar" style="height:<?= $tinggi ?>%"></div>
+              <span class="laporan-bar-label"><?= h(date('d/m', strtotime($tgl))) ?></span>
+            </div>
+          <?php endforeach; ?>
+        </div>
+      <?php endif; ?>
+      <p class="checkout-note" style="margin-top:0.6rem;"><a href="laporan.php" style="color:var(--clay);font-weight:700;">Lihat laporan penjualan lengkap &rarr;</a></p>
     </div>
 
     <table class="admin-table">
