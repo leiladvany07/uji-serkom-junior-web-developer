@@ -2,7 +2,7 @@
 if (session_status() === PHP_SESSION_NONE) session_start();
 require_once __DIR__ . '/config.php';
 
-// Tambah produk ke keranjang (dengan validasi status & stok)
+// Tambah produk ke keranjang (dengan validasi status & stok, per warna kalau ada)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tambah_id'])) {
     $id = (int) $_POST['tambah_id'];
     $warna = trim($_POST['warna'] ?? '');
@@ -17,22 +17,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tambah_id'])) {
 
     if (!$p || !produk_aktif($p)) {
         $flash[] = 'Produk ini sudah tidak tersedia.';
-    } elseif ((int) $p['stok'] <= 0) {
-        $flash[] = 'Stok "' . $p['nama'] . '" sedang habis.';
     } else {
-        // Stok dipakai bersama semua pilihan warna produk yang sama.
-        $sudah = 0;
-        foreach ($_SESSION['keranjang'] as $k => $j) {
-            if (id_dari_key_keranjang($k) === $id) $sudah += $j;
-        }
-        $sisa = (int) $p['stok'] - $sudah;
-        if ($sisa <= 0) {
-            $flash[] = 'Keranjangmu sudah berisi seluruh stok "' . $p['nama'] . '" (' . (int) $p['stok'] . ' pcs).';
+        $varian = ambil_stok_varian($pdo, [$id]);
+        $pakaiVarian = !empty($varian[$id]);
+        $label = $p['nama'] . ($pakaiVarian ? ' (' . $warna . ')' : '');
+        $stokTersedia = stok_untuk($p, $warna, $varian);
+
+        if ($stokTersedia <= 0) {
+            $flash[] = 'Stok "' . $label . '" sedang habis.';
         } else {
-            $tambah = min($jumlah, $sisa);
-            $_SESSION['keranjang'][$key] = ($_SESSION['keranjang'][$key] ?? 0) + $tambah;
-            if ($tambah < $jumlah) {
-                $flash[] = 'Hanya ' . $tambah . ' pcs "' . $p['nama'] . '" yang ditambahkan karena stok tersisa terbatas.';
+            // Stok dihitung per warna kalau produknya punya stok per warna, kalau tidak dipakai bersama.
+            $sudah = 0;
+            foreach ($_SESSION['keranjang'] as $k => $j) {
+                if (id_dari_key_keranjang($k) === $id && (!$pakaiVarian || warna_dari_key_keranjang($k) === $warna)) $sudah += $j;
+            }
+            $sisa = $stokTersedia - $sudah;
+            if ($sisa <= 0) {
+                $flash[] = 'Keranjangmu sudah berisi seluruh stok "' . $label . '" (' . $stokTersedia . ' pcs).';
+            } else {
+                $tambah = min($jumlah, $sisa);
+                $_SESSION['keranjang'][$key] = ($_SESSION['keranjang'][$key] ?? 0) + $tambah;
+                if ($tambah < $jumlah) {
+                    $flash[] = 'Hanya ' . $tambah . ' pcs "' . $label . '" yang ditambahkan karena stok tersisa terbatas.';
+                }
             }
         }
     }
@@ -62,6 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_id'])) {
         unset($_SESSION['keranjang'][$key]);
     } else {
         $id = id_dari_key_keranjang($key);
+        $warna = warna_dari_key_keranjang($key);
         $stmtP = $pdo->prepare('SELECT id, nama, stok, aktif FROM produk WHERE id = ?');
         $stmtP->execute([$id]);
         $p = $stmtP->fetch();
@@ -69,17 +77,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_id'])) {
             unset($_SESSION['keranjang'][$key]);
             $_SESSION['keranjang_pesan'] = ['Produk ini sudah tidak tersedia dan dihapus dari keranjang.'];
         } else {
+            $varian = ambil_stok_varian($pdo, [$id]);
+            $pakaiVarian = !empty($varian[$id]);
+            $label = $p['nama'] . ($pakaiVarian ? ' (' . $warna . ')' : '');
+            $stokTersedia = stok_untuk($p, $warna, $varian);
             $lain = 0;
             foreach ($_SESSION['keranjang'] as $k => $j) {
-                if ($k !== $key && id_dari_key_keranjang($k) === $id) $lain += $j;
+                if ($k !== $key && id_dari_key_keranjang($k) === $id && (!$pakaiVarian || warna_dari_key_keranjang($k) === $warna)) $lain += $j;
             }
-            $maks = (int) $p['stok'] - $lain;
+            $maks = $stokTersedia - $lain;
             if ($maks <= 0) {
                 unset($_SESSION['keranjang'][$key]);
-                $_SESSION['keranjang_pesan'] = ['Stok "' . $p['nama'] . '" habis.'];
+                $_SESSION['keranjang_pesan'] = ['Stok "' . $label . '" habis.'];
             } elseif ($jumlah > $maks) {
                 $_SESSION['keranjang'][$key] = $maks;
-                $_SESSION['keranjang_pesan'] = ['Stok "' . $p['nama'] . '" hanya tersisa ' . (int) $p['stok'] . ' pcs, jumlah disesuaikan.'];
+                $_SESSION['keranjang_pesan'] = ['Stok "' . $label . '" hanya tersisa ' . $stokTersedia . ' pcs, jumlah disesuaikan.'];
             } else {
                 $_SESSION['keranjang'][$key] = $jumlah;
             }

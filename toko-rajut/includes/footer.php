@@ -30,6 +30,6 @@
   <p class="footer-copy">&copy; 2026 Lalunaco. Proyek Uji Sertifikasi Kompetensi — Junior Web Developer.</p>
 </footer>
 
-<script src="<?= BASE_URL ?>/js/script.js"></script>
+<script src="<?= BASE_URL ?>/js/script.js?v=<?= filemtime(__DIR__ . '/../js/script.js') ?>"></script>
 </body>
 </html>

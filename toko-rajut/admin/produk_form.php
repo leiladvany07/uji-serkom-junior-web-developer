@@ -26,8 +26,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $produk['kategori_id'] = (int) ($_POST['kategori_id'] ?? 0);
     $produk['deskripsi'] = trim($_POST['deskripsi'] ?? '');
     $produk['harga'] = (int) ($_POST['harga'] ?? 0);
-    $produk['stok'] = (int) ($_POST['stok'] ?? 0);
     $produk['warna'] = trim($_POST['warna'] ?? '');
+
+    // Stok: kalau ada 2+ warna, stok diisi per warna (total = jumlah semuanya).
+    $warnaList = array_values(array_unique(parse_warna($produk['warna'])));
+    if ($warnaList) $produk['warna'] = implode(', ', $warnaList);
+    $stokWarna = [];
+    if (count($warnaList) >= 2) {
+        $stokInput = $_POST['stok_warna'] ?? [];
+        foreach ($warnaList as $i => $w) {
+            $nilai = (int) ($stokInput[$i] ?? 0);
+            if ($nilai < 0) $errors[] = 'Stok warna "' . $w . '" tidak boleh negatif.';
+            $stokWarna[(string) $w] = max(0, $nilai);
+        }
+        $produk['stok'] = array_sum($stokWarna);
+    } else {
+        $produk['stok'] = (int) ($_POST['stok'] ?? 0);
+    }
 
     if ($produk['nama'] === '') $errors[] = 'Nama produk wajib diisi.';
     if (!$produk['kategori_id']) $errors[] = 'Pilih kategori.';
@@ -70,15 +85,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (empty($errors)) {
     $slug = buat_slug($produk['nama']);
-    if ($id) {
+    $pdo->beginTransaction();
+    try {
+        if ($id) {
             $stmt = $pdo->prepare('UPDATE produk SET nama=?, kategori_id=?, deskripsi=?, harga=?, stok=?, warna=?, gambar=?, slug=? WHERE id=?');
             $stmt->execute([$produk['nama'], $produk['kategori_id'], $produk['deskripsi'], $produk['harga'], $produk['stok'], $produk['warna'], $produk['gambar'], $slug, $id]);
+            $produkId = $id;
         } else {
-            $stmt = $pdo->prepare('INSERT INTO produk (nama, kategori_id, deskripsi, harga, stok, warna, gambar, slug) VALUES (?,?,?,?,?,?,?,?)');
+            $stmt = $pdo->prepare('INSERT INTO produk (nama, kategori_id, deskripsi, harga, stok, warna, gambar, slug) VALUES (?,?,?,?,?,?,?,?) RETURNING id');
             $stmt->execute([$produk['nama'], $produk['kategori_id'], $produk['deskripsi'], $produk['harga'], $produk['stok'], $produk['warna'], $produk['gambar'], $slug]);
+            $produkId = (int) $stmt->fetchColumn();
         }
+        // Simpan stok per warna (produk dengan 1 warna / tanpa warna tidak punya baris di sini).
+        if (varian_tersedia($pdo)) {
+            $pdo->prepare('DELETE FROM produk_warna WHERE produk_id = ?')->execute([$produkId]);
+            $ins = $pdo->prepare('INSERT INTO produk_warna (produk_id, warna, stok) VALUES (?,?,?)');
+            foreach ($stokWarna as $w => $sw) { $ins->execute([$produkId, (string) $w, $sw]); }
+        }
+        $pdo->commit();
+    } catch (Exception $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        error_log('Simpan produk gagal: ' . $e->getMessage());
+        $errors[] = 'Produk gagal disimpan. Coba lagi.';
+    }
+    if (empty($errors)) {
         header('Location: dashboard.php');
         exit;
+    }
+    }
+}
+
+// Data awal isian stok per warna untuk form (nama warna => stok).
+$daftarWarnaForm = array_values(array_unique(parse_warna($produk['warna'] ?? '')));
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $stokWarnaAwal = $stokWarna ?? [];
+} else {
+    $stokWarnaAwal = $id ? (ambil_stok_varian($pdo, [$id])[$id] ?? []) : [];
+    // Produk lama yang belum punya stok per warna: seluruh stok ditaruh di warna pertama.
+    if (!$stokWarnaAwal && count($daftarWarnaForm) >= 2) {
+        $stokWarnaAwal = [$daftarWarnaForm[0] => (int) ($produk['stok'] ?? 0)];
     }
 }
 ?>
@@ -89,7 +134,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?= $id ? 'Ubah' : 'Tambah' ?> Produk — Lalunaco</title>
 <link href="https://fonts.googleapis.com/css2?family=Lora:wght@500;600&family=Nunito+Sans:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../css/style.css">
+<link rel="stylesheet" href="../css/style.css?v=<?= filemtime(__DIR__ . '/../css/style.css') ?>">
 </head>
 <body>
 <div class="admin-layout">
@@ -162,14 +207,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <label>Harga (Rp)
           <input type="number" name="harga" value="<?= h($produk['harga']) ?>" required>
         </label>
-        <label>Stok
-          <input type="number" name="stok" min="0" value="<?= h($produk['stok']) ?>" required>
+        <label id="stokSingleWrap">Stok
+          <input type="number" name="stok" id="stokSingleInput" min="0" value="<?= h($produk['stok']) ?>" required>
         </label>
       </div>
       <label>Warna
         <input type="text" name="warna" value="<?= h($produk['warna']) ?>">
-        <span class="foto-preview-hint">Pisahkan dengan koma kalau ada lebih dari 1 pilihan warna, contoh: Krem, Putih Gading</span>
+        <span class="foto-preview-hint">Pisahkan dengan koma kalau ada lebih dari 1 pilihan warna, contoh: Krem, Putih Gading. Kalau ada 2+ warna, stok diisi per warna.</span>
       </label>
+
+      <div class="stok-warna-box" id="stokWarnaBox" hidden>
+        <p class="stok-warna-judul">Stok per warna</p>
+        <div id="stokWarnaList"></div>
+      </div>
+      <script>
+      (function () {
+        var warnaInput = document.querySelector('input[name="warna"]');
+        var singleWrap = document.getElementById('stokSingleWrap');
+        var singleInput = document.getElementById('stokSingleInput');
+        var box = document.getElementById('stokWarnaBox');
+        var list = document.getElementById('stokWarnaList');
+        var nilai = <?= json_encode((object) $stokWarnaAwal, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?>;
+
+        function daftarWarna() {
+          return warnaInput.value.split(',').map(function (s) { return s.trim(); })
+            .filter(function (v, i, a) { return v && a.indexOf(v) === i; });
+        }
+
+        function render() {
+          // simpan dulu isian yang sedang tampil supaya tidak hilang saat daftar warna berubah
+          list.querySelectorAll('input').forEach(function (inp) { nilai[inp.getAttribute('data-warna')] = inp.value; });
+          var warna = daftarWarna();
+          var banyak = warna.length >= 2;
+          box.hidden = !banyak;
+          singleWrap.style.display = banyak ? 'none' : '';
+          singleInput.disabled = banyak;
+          list.innerHTML = '';
+          if (!banyak) return;
+          warna.forEach(function (nm) {
+            var row = document.createElement('label');
+            row.className = 'stok-warna-row';
+            var teks = document.createElement('span');
+            teks.textContent = nm;
+            var inp = document.createElement('input');
+            inp.type = 'number'; inp.min = '0'; inp.required = true;
+            inp.name = 'stok_warna[]';
+            inp.setAttribute('data-warna', nm);
+            inp.value = (nilai[nm] !== undefined && nilai[nm] !== '') ? nilai[nm] : 0;
+            row.appendChild(teks); row.appendChild(inp);
+            list.appendChild(row);
+          });
+        }
+
+        warnaInput.addEventListener('input', render);
+        render();
+      })();
+      </script>
             <label>Foto produk
         <?php $gambarPreview = array_filter(array_map('trim', explode(',', $produk['gambar']))); ?>
         <?php if (!empty($gambarPreview)): ?>

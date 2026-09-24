@@ -63,7 +63,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   function terapkanAlamat() {
     var lain = document.querySelector('input[name="mode_alamat"]:checked').value === 'lain';
-    wrapBaru.style.display = lain ? '' : 'none';
+    wrapBaru.classList.toggle('is-hidden', !lain);
     inputAlamat.required = lain;
     if (lain) inputAlamat.focus();
   }

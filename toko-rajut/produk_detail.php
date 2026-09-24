@@ -4,7 +4,7 @@ require_once __DIR__ . '/config.php';
 $slug = isset($_GET['slug']) ? trim($_GET['slug']) : '';
 $stmt = $pdo->prepare('SELECT produk.*, kategori.nama AS kategori_nama, kategori.slug AS kategori_slug
                         FROM produk JOIN kategori ON produk.kategori_id = kategori.id
-                        WHERE produk.slug = ?');
+                        WHERE produk.slug = ? AND produk.aktif = TRUE');
 $stmt->execute([$slug]);
 $produk = $stmt->fetch();
 
@@ -15,9 +15,12 @@ if (!$produk) {
     exit;
 }
 
-$stmtTerkait = $pdo->prepare('SELECT * FROM produk WHERE kategori_id = ? AND id != ? LIMIT 3');
+$stmtTerkait = $pdo->prepare('SELECT * FROM produk WHERE kategori_id = ? AND id != ? AND aktif = TRUE LIMIT 3');
 $stmtTerkait->execute([$produk['kategori_id'], $produk['id']]);
 $produkTerkait = $stmtTerkait->fetchAll();
+
+// Stok per warna (kalau produk punya 2+ warna): [warna => stok]
+$varian = ambil_stok_varian($pdo, [(int) $produk['id']])[(int) $produk['id']] ?? [];
 
 $page_title = $produk['nama'];
 require __DIR__ . '/includes/header.php';
@@ -53,11 +56,22 @@ require __DIR__ . '/includes/header.php';
     <p class="product-detail-harga"><?= format_rupiah($produk['harga']) ?></p>
     <p class="product-detail-desc"><?= nl2br(h($produk['deskripsi'])) ?></p>
     <dl class="product-specs">
-      <?php $warnaList = parse_warna($produk['warna']); ?>
+      <?php
+        $warnaList = parse_warna($produk['warna']);
+        $punyaVarian = count($warnaList) > 1 && !empty($varian);
+        // Warna yang terpilih awal: warna pertama yang stoknya masih ada.
+        $warnaAwal = $warnaList[0] ?? '';
+        if ($punyaVarian) {
+            foreach ($warnaList as $w) {
+                if (($varian[$w] ?? 0) > 0) { $warnaAwal = $w; break; }
+            }
+        }
+        $stokAwal = $punyaVarian ? (int) ($varian[$warnaAwal] ?? 0) : (int) $produk['stok'];
+      ?>
       <?php if (count($warnaList) <= 1): ?>
         <div><dt>Warna</dt><dd><?= h($produk['warna']) ?></dd></div>
       <?php endif; ?>
-      <div><dt>Stok</dt><dd><?= (int) $produk['stok'] ?> pcs</dd></div>
+      <div><dt>Stok</dt><dd id="stok-tampil"><?= $stokAwal ?> pcs</dd></div>
     </dl>
 
     <?php if ((int) $produk['stok'] > 0): ?>
@@ -67,8 +81,9 @@ require __DIR__ . '/includes/header.php';
           <div class="produk-warna-opsi">
             <?php foreach ($warnaList as $i => $w): ?>
               <label class="warna-chip">
-                <input type="radio" name="warna" value="<?= h($w) ?>" form="form-tambah-keranjang" <?= $i === 0 ? 'checked' : '' ?> required>
-                <span><?= h($w) ?></span>
+                <?php $stokW = $punyaVarian ? (int) ($varian[$w] ?? 0) : (int) $produk['stok']; ?>
+                <input type="radio" name="warna" value="<?= h($w) ?>" form="form-tambah-keranjang" data-stok="<?= $stokW ?>" <?= $w === $warnaAwal ? 'checked' : '' ?> <?= $stokW <= 0 ? 'disabled' : '' ?> required>
+                <span><?= h($w) ?><?= $stokW <= 0 ? ' (habis)' : '' ?></span>
               </label>
             <?php endforeach; ?>
           </div>
@@ -83,7 +98,7 @@ require __DIR__ . '/includes/header.php';
         <?php endif; ?>
         <div class="produk-beli-qty">
           <label for="jumlah-beli">Jumlah</label>
-          <input type="number" id="jumlah-beli" name="jumlah" value="1" min="1" max="<?= (int) $produk['stok'] ?>" form="form-tambah-keranjang">
+          <input type="number" id="jumlah-beli" name="jumlah" value="1" min="1" max="<?= $stokAwal ?>" form="form-tambah-keranjang">
         </div>
         <button type="submit" class="btn btn-primary">Tambah ke Keranjang</button>
       </form>
@@ -93,7 +108,7 @@ require __DIR__ . '/includes/header.php';
         <?php if (count($warnaList) <= 1): ?>
           <input type="hidden" name="beli_warna" value="<?= h($warnaList[0] ?? '') ?>">
         <?php else: ?>
-          <input type="hidden" name="beli_warna" value="<?= h($warnaList[0]) ?>" id="beli-warna-hidden">
+          <input type="hidden" name="beli_warna" value="<?= h($warnaAwal) ?>" id="beli-warna-hidden">
         <?php endif; ?>
         <input type="hidden" name="beli_jumlah" value="1" id="beli-jumlah-hidden">
         <button type="submit" class="btn btn-outline">Beli Sekarang</button>
@@ -120,7 +135,17 @@ require __DIR__ . '/includes/header.php';
   if (warnaRadios.length && beliWarnaHidden) {
     warnaRadios.forEach(function(r){
       r.addEventListener('change', function(){
-        if (r.checked) beliWarnaHidden.value = r.value;
+        if (!r.checked) return;
+        beliWarnaHidden.value = r.value;
+        // Stok mengikuti warna yang dipilih
+        var stok = parseInt(r.getAttribute('data-stok'), 10);
+        var tampil = document.getElementById('stok-tampil');
+        if (tampil && !isNaN(stok)) tampil.textContent = stok + ' pcs';
+        if (jumlahInput && !isNaN(stok) && stok > 0) {
+          jumlahInput.max = stok;
+          if (parseInt(jumlahInput.value, 10) > stok) jumlahInput.value = stok;
+          if (beliJumlahHidden) beliJumlahHidden.value = jumlahInput.value || 1;
+        }
       });
     });
   }

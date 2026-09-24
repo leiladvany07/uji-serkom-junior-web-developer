@@ -58,19 +58,17 @@ function sinkron_stok_pesanan(PDO $pdo, int $transaksiId, string $statusBaru) {
     $batalSekarang = is_status_batal($statusBaru);
 
     if ($batalSekarang && !$sudahDikembalikan) {
-        $items = $pdo->prepare('SELECT produk_id, jumlah FROM transaksi_item WHERE transaksi_id = ?');
+        $items = $pdo->prepare('SELECT produk_id, warna, jumlah FROM transaksi_item WHERE transaksi_id = ?');
         $items->execute([$transaksiId]);
-        $upd = $pdo->prepare('UPDATE produk SET stok = stok + ? WHERE id = ?');
         foreach ($items->fetchAll() as $it) {
-            if (!empty($it['produk_id'])) $upd->execute([$it['jumlah'], $it['produk_id']]);
+            if (!empty($it['produk_id'])) ubah_stok_item($pdo, (int) $it['produk_id'], (string) ($it['warna'] ?? ''), (int) $it['jumlah']);
         }
         $pdo->prepare('UPDATE transaksi SET stok_dikembalikan = TRUE WHERE id = ?')->execute([$transaksiId]);
     } elseif (!$batalSekarang && $sudahDikembalikan) {
-        $items = $pdo->prepare('SELECT produk_id, jumlah FROM transaksi_item WHERE transaksi_id = ?');
+        $items = $pdo->prepare('SELECT produk_id, warna, jumlah FROM transaksi_item WHERE transaksi_id = ?');
         $items->execute([$transaksiId]);
-        $upd = $pdo->prepare('UPDATE produk SET stok = GREATEST(stok - ?, 0) WHERE id = ?');
         foreach ($items->fetchAll() as $it) {
-            if (!empty($it['produk_id'])) $upd->execute([$it['jumlah'], $it['produk_id']]);
+            if (!empty($it['produk_id'])) ubah_stok_item($pdo, (int) $it['produk_id'], (string) ($it['warna'] ?? ''), -(int) $it['jumlah']);
         }
         $pdo->prepare('UPDATE transaksi SET stok_dikembalikan = FALSE WHERE id = ?')->execute([$transaksiId]);
     }
@@ -78,6 +76,55 @@ function sinkron_stok_pesanan(PDO $pdo, int $transaksiId, string $statusBaru) {
 
 // ===== STOK & STATUS PRODUK =====
 class StokTidakCukupException extends Exception {}
+
+// ----- Stok per warna -----
+// Produk dengan 2+ warna menyimpan stok tiap warna di tabel produk_warna.
+// Kolom produk.stok berisi TOTAL semua warna (dijaga sinkron oleh aplikasi).
+function varian_tersedia(PDO $pdo): bool {
+    static $ada = null;
+    if ($ada === null) {
+        $ada = $pdo->query("SELECT to_regclass('produk_warna')")->fetchColumn() !== null;
+    }
+    return $ada;
+}
+
+// Hasil: [produk_id => [warna => stok]]. Produk tanpa stok per warna tidak ikut.
+function ambil_stok_varian(PDO $pdo, array $produkIds, bool $kunci = false): array {
+    $produkIds = array_values(array_unique(array_map('intval', $produkIds)));
+    if (!$produkIds || !varian_tersedia($pdo)) return [];
+    $ph = implode(',', array_fill(0, count($produkIds), '?'));
+    $stmt = $pdo->prepare("SELECT produk_id, warna, stok FROM produk_warna WHERE produk_id IN ($ph) ORDER BY id" . ($kunci ? ' FOR UPDATE' : ''));
+    $stmt->execute($produkIds);
+    $map = [];
+    foreach ($stmt->fetchAll() as $r) { $map[(int) $r['produk_id']][(string) $r['warna']] = (int) $r['stok']; }
+    return $map;
+}
+
+// Stok yang berlaku untuk produk + warna tertentu.
+function stok_untuk(array $p, string $warna, array $varian): int {
+    $pid = (int) $p['id'];
+    if (!empty($varian[$pid])) return (int) ($varian[$pid][$warna] ?? 0);
+    return (int) $p['stok'];
+}
+
+// Samakan produk.stok dengan jumlah stok semua warnanya.
+function sinkron_total_stok(PDO $pdo, int $produkId): void {
+    $pdo->prepare('UPDATE produk SET stok = (SELECT COALESCE(SUM(stok), 0) FROM produk_warna WHERE produk_id = ?) WHERE id = ?')
+        ->execute([$produkId, $produkId]);
+}
+
+// Tambah / kurangi stok satu item pesanan (dipakai saat pesanan dibatalkan / diaktifkan lagi).
+function ubah_stok_item(PDO $pdo, int $produkId, string $warna, int $delta): void {
+    if ($warna !== '' && varian_tersedia($pdo)) {
+        $u = $pdo->prepare('UPDATE produk_warna SET stok = GREATEST(stok + ?, 0) WHERE produk_id = ? AND warna = ?');
+        $u->execute([$delta, $produkId, $warna]);
+        if ($u->rowCount() > 0) {
+            sinkron_total_stok($pdo, $produkId);
+            return;
+        }
+    }
+    $pdo->prepare('UPDATE produk SET stok = GREATEST(stok + ?, 0) WHERE id = ?')->execute([$delta, $produkId]);
+}
 
 // Produk dianggap aktif kalau kolom "aktif" bernilai true (atau kolomnya belum ada).
 function produk_aktif(array $p): bool {
@@ -94,17 +141,28 @@ function pesan_masalah_stok(array $p, int $qty): ?string {
     return null;
 }
 
-// Cek semua item ['produk' => row, 'jumlah' => n]. Jumlah dijumlahkan per produk
-// (produk yang sama dengan warna berbeda memakai stok yang sama).
-function cek_stok_items(array $items): array {
-    $perProduk = [];
+// Cek semua item ['produk' => row, 'jumlah' => n, 'warna' => teks]. Jumlah dijumlahkan
+// per produk; untuk produk dengan stok per warna, per produk + warna.
+function cek_stok_items(array $items, array $varian = []): array {
+    $perKunci = [];
     foreach ($items as $it) {
-        $id = (int) $it['produk']['id'];
-        if (!isset($perProduk[$id])) $perProduk[$id] = ['produk' => $it['produk'], 'jumlah' => 0];
-        $perProduk[$id]['jumlah'] += (int) $it['jumlah'];
+        $p = $it['produk'];
+        $pid = (int) $p['id'];
+        $pakaiVarian = !empty($varian[$pid]);
+        $warna = $pakaiVarian ? (string) ($it['warna'] ?? '') : '';
+        $kunci = $pid . '::' . $warna;
+        if (!isset($perKunci[$kunci])) {
+            $row = $p;
+            if ($pakaiVarian) {
+                $row['stok'] = (int) ($varian[$pid][$warna] ?? 0);
+                $row['nama'] = $p['nama'] . ' (' . $warna . ')';
+            }
+            $perKunci[$kunci] = ['produk' => $row, 'jumlah' => 0];
+        }
+        $perKunci[$kunci]['jumlah'] += (int) $it['jumlah'];
     }
     $pesan = [];
-    foreach ($perProduk as $d) {
+    foreach ($perKunci as $d) {
         $m = pesan_masalah_stok($d['produk'], $d['jumlah']);
         if ($m !== null) $pesan[] = $m;
     }
@@ -113,6 +171,10 @@ function cek_stok_items(array $items): array {
 
 function id_dari_key_keranjang($key): int {
     return (int) explode('::', (string) $key, 2)[0];
+}
+
+function warna_dari_key_keranjang($key): string {
+    return explode('::', (string) $key, 2)[1] ?? '';
 }
 
 // Samakan isi keranjang (session) dengan kondisi produk terbaru: produk nonaktif / habis
@@ -128,28 +190,33 @@ function sinkron_keranjang(PDO $pdo): array {
     $stmt->execute($ids);
     $produk = [];
     foreach ($stmt->fetchAll() as $p) { $produk[(int) $p['id']] = $p; }
+    $varian = ambil_stok_varian($pdo, $ids);
 
     $terpakai = [];
     foreach ($keranjang as $key => $jumlah) {
         $id = id_dari_key_keranjang($key);
+        $warna = warna_dari_key_keranjang($key);
         $p = $produk[$id] ?? null;
         if (!$p || !produk_aktif($p)) {
             unset($_SESSION['keranjang'][$key]);
             $pesan[] = ($p ? '"' . $p['nama'] . '"' : 'Salah satu produk') . ' sudah tidak tersedia dan dihapus dari keranjang.';
             continue;
         }
-        $sisa = (int) $p['stok'] - ($terpakai[$id] ?? 0);
+        $pakaiVarian = !empty($varian[$id]);
+        $slot = $pakaiVarian ? $id . '::' . $warna : (string) $id;
+        $label = $p['nama'] . ($pakaiVarian ? ' (' . $warna . ')' : '');
+        $sisa = stok_untuk($p, $warna, $varian) - ($terpakai[$slot] ?? 0);
         if ($sisa <= 0) {
             unset($_SESSION['keranjang'][$key]);
-            $pesan[] = 'Stok "' . $p['nama'] . '" habis, produk dihapus dari keranjang.';
+            $pesan[] = 'Stok "' . $label . '" habis, produk dihapus dari keranjang.';
             continue;
         }
         if ($jumlah > $sisa) {
             $_SESSION['keranjang'][$key] = $sisa;
             $jumlah = $sisa;
-            $pesan[] = 'Jumlah "' . $p['nama'] . '" disesuaikan menjadi ' . $sisa . ' pcs sesuai stok tersisa.';
+            $pesan[] = 'Jumlah "' . $label . '" disesuaikan menjadi ' . $sisa . ' pcs sesuai stok tersisa.';
         }
-        $terpakai[$id] = ($terpakai[$id] ?? 0) + $jumlah;
+        $terpakai[$slot] = ($terpakai[$slot] ?? 0) + $jumlah;
     }
     return $pesan;
 }

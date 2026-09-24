@@ -732,9 +732,6 @@ select.status-badge{
   background:var(--forest);color:#fff;font-size:0.68rem;font-weight:700;
   padding:0.25rem 0.6rem;border-radius:20px;
 }
-.product-badge-habis{background:#6b6558;}
-.product-card-habis .product-thumb img{filter:grayscale(60%);opacity:0.55;}
-.product-card-habis .product-nama a{color:var(--muted);}
 .product-card{box-shadow:var(--shadow-sm);}
 .product-card:hover{box-shadow:var(--shadow-md);}
 
@@ -1026,7 +1023,6 @@ select.status-badge{
 .confirm-btn-ok.is-danger{background:#A33131;}
 .confirm-btn-ok.is-danger:hover{background:#862626;}
 
-
 /* ===== MOBILE: tombol Cari di dalam kolom pencarian (sisi kanan) ===== */
 @media (max-width:600px){
   .search-form{position:relative;flex-direction:row;gap:0;}
@@ -1071,3 +1067,31 @@ select.status-badge{
   .laporan-filter .icon-btn{flex:1 1 calc(50% - 0.35rem);}
   .omzet-y{min-width:2.9rem;}
 }
+
+/* ===== MOBILE: cegah halaman admin melebar melebihi layar ===== */
+@media (max-width:900px){
+  .admin-main{width:100%;max-width:100%;margin:0;box-sizing:border-box;}
+  .admin-main > *{min-width:0;max-width:100%;}
+  .laporan-main-grid,.pesanan-main-grid,.kategori-layout{grid-template-columns:minmax(0,1fr);}
+  .admin-table th,.admin-table td{padding:0.7rem 0.75rem;}
+  .laporan-chart-card{padding:1.1rem;}
+}
+
+/* ===== Checkout: tambah alamat baru ===== */
+.alamat-baru{display:flex;flex-direction:column;gap:0.7rem;padding:1rem 1.1rem;border:1px dashed var(--clay);border-radius:8px;background:#FBF6EA;}
+.alamat-baru.is-hidden{display:none;}
+.alamat-baru-judul{display:flex;align-items:center;gap:0.55rem;font-weight:700;font-size:0.9rem;color:var(--clay-dark);}
+.alamat-baru-plus{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--clay);color:#fff;font-size:1.05rem;line-height:1;}
+/* Tampil/sembunyi langsung dari pilihan radio (tanpa menunggu JavaScript) */
+.contact-form:has(input[name="mode_alamat"][value="lain"]:checked) .alamat-baru.is-hidden{display:flex;}
+.contact-form:has(input[name="mode_alamat"][value="tersimpan"]:checked) .alamat-baru{display:none;}
+
+/* ===== Stok per warna ===== */
+.warna-chip input:disabled + span{opacity:0.45;text-decoration:line-through;cursor:not-allowed;}
+.warna-chip:hover input:disabled + span{border-color:var(--line);}
+.stok-warna-box{display:flex;flex-direction:column;gap:0.6rem;padding:0.9rem 1rem;border:1px dashed var(--clay);border-radius:8px;background:#FBF6EA;}
+.stok-warna-box[hidden]{display:none;}
+.stok-warna-judul{font-size:0.82rem;font-weight:700;color:var(--clay-dark);}
+#stokWarnaList{display:flex;flex-direction:column;gap:0.55rem;}
+.admin-form .stok-warna-row{flex-direction:row;align-items:center;justify-content:space-between;gap:0.8rem;color:var(--ink);font-size:0.88rem;}
+.admin-form .stok-warna-row input{width:110px;}

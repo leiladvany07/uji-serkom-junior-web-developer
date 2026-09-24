@@ -29,11 +29,14 @@ if ($langsung) {
         header('Location: produk.php');
         exit;
     }
-    // Jumlah disesuaikan dengan stok tersisa. Kalau stok habis, checkout diblokir di bawah.
+    // Jumlah disesuaikan dengan stok tersisa (per warna kalau ada). Kalau stok habis, checkout diblokir di bawah.
+    $varianL = ambil_stok_varian($pdo, [(int) $p['id']]);
+    $stokL = stok_untuk($p, $langsung['warna'], $varianL);
+    $labelL = $p['nama'] . (!empty($varianL[(int) $p['id']]) ? ' (' . $langsung['warna'] . ')' : '');
     $jumlah = $langsung['jumlah'];
-    if ((int) $p['stok'] > 0 && $jumlah > (int) $p['stok']) {
-        $jumlah = (int) $p['stok'];
-        $infoStok[] = 'Jumlah "' . $p['nama'] . '" disesuaikan menjadi ' . $jumlah . ' pcs sesuai stok tersisa.';
+    if ($stokL > 0 && $jumlah > $stokL) {
+        $jumlah = $stokL;
+        $infoStok[] = 'Jumlah "' . $labelL . '" disesuaikan menjadi ' . $jumlah . ' pcs sesuai stok tersisa.';
     }
     $subtotal = $p['harga'] * $jumlah;
     $items[] = ['produk' => $p, 'warna' => $langsung['warna'], 'jumlah' => $jumlah, 'subtotal' => $subtotal];
@@ -74,7 +77,8 @@ if ($langsung) {
     }
 }
 
-$masalahStok = cek_stok_items($items);
+$varianItems = ambil_stok_varian($pdo, array_map(fn($it) => (int) $it['produk']['id'], $items));
+$masalahStok = cek_stok_items($items, $varianItems);
 
 $pelangganData = null;
 if (!empty($_SESSION['pelanggan_id'])) {
@@ -128,23 +132,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             // Kunci baris produk selama transaksi & cek ulang stok terbaru, supaya dua
             // pembeli tidak bisa memesan stok yang sama pada saat bersamaan.
-            $butuh = [];
-            foreach ($items as $item) {
-                $pid = (int) $item['produk']['id'];
-                $butuh[$pid] = ($butuh[$pid] ?? 0) + $item['jumlah'];
-            }
-            if (empty($butuh)) throw new StokTidakCukupException('Tidak ada produk yang bisa dipesan.');
-            $ids = array_keys($butuh);
+            if (empty($items)) throw new StokTidakCukupException('Tidak ada produk yang bisa dipesan.');
+            $ids = array_values(array_unique(array_map(fn($it) => (int) $it['produk']['id'], $items)));
             $ph = implode(',', array_fill(0, count($ids), '?'));
             $stmtKunci = $pdo->prepare("SELECT id, nama, stok, aktif FROM produk WHERE id IN ($ph) ORDER BY id FOR UPDATE");
             $stmtKunci->execute($ids);
             $terkunci = [];
             foreach ($stmtKunci->fetchAll() as $r) { $terkunci[(int) $r['id']] = $r; }
-            $masalahTerbaru = [];
-            foreach ($butuh as $pid => $qty) {
-                $m = pesan_masalah_stok($terkunci[$pid] ?? ['nama' => 'Produk', 'stok' => 0, 'aktif' => false], $qty);
-                if ($m !== null) $masalahTerbaru[] = $m;
+            $varianTerkunci = ambil_stok_varian($pdo, $ids, true);
+            $itemsTerkunci = [];
+            foreach ($items as $item) {
+                $pid = (int) $item['produk']['id'];
+                $itemsTerkunci[] = [
+                    'produk' => $terkunci[$pid] ?? ['id' => $pid, 'nama' => 'Produk', 'stok' => 0, 'aktif' => false],
+                    'warna' => $item['warna'],
+                    'jumlah' => $item['jumlah'],
+                ];
             }
+            $masalahTerbaru = cek_stok_items($itemsTerkunci, $varianTerkunci);
             if ($masalahTerbaru) throw new StokTidakCukupException(implode("\n", $masalahTerbaru));
 
             $stmt = $pdo->prepare('INSERT INTO transaksi (kode, nama, telepon, email, alamat, catatan, metode_pembayaran, total, pelanggan_id) VALUES (?,?,?,?,?,?,?,?,?) RETURNING id');
@@ -161,16 +166,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $stmtItem = $pdo->prepare('INSERT INTO transaksi_item (transaksi_id, produk_id, nama_produk, warna, harga, jumlah, subtotal) VALUES (?,?,?,?,?,?,?)');
             $stmtStok = $pdo->prepare('UPDATE produk SET stok = stok - ? WHERE id = ? AND stok >= ?');
+            $stmtVarian = !empty($varianTerkunci)
+                ? $pdo->prepare('UPDATE produk_warna SET stok = stok - ? WHERE produk_id = ? AND warna = ? AND stok >= ?')
+                : null;
+            $produkDisinkron = [];
 
             foreach ($items as $item) {
                 $p = $item['produk'];
                 $namaProduk = $p['nama'] . ($item['warna'] !== '' ? ' (' . $item['warna'] . ')' : '');
                 $stmtItem->execute([$transaksiId, $p['id'], $namaProduk, $item['warna'], $p['harga'], $item['jumlah'], $item['subtotal']]);
-                $stmtStok->execute([$item['jumlah'], $p['id'], $item['jumlah']]);
-                if ($stmtStok->rowCount() === 0) {
-                    throw new StokTidakCukupException('Stok "' . $p['nama'] . '" tidak mencukupi.');
+                $pid = (int) $p['id'];
+                if (!empty($varianTerkunci[$pid])) {
+                    // Produk dengan stok per warna: kurangi stok warna yang dipesan, total menyusul.
+                    $stmtVarian->execute([$item['jumlah'], $pid, $item['warna'], $item['jumlah']]);
+                    if ($stmtVarian->rowCount() === 0) {
+                        throw new StokTidakCukupException('Stok "' . $namaProduk . '" tidak mencukupi.');
+                    }
+                    $produkDisinkron[$pid] = true;
+                } else {
+                    $stmtStok->execute([$item['jumlah'], $pid, $item['jumlah']]);
+                    if ($stmtStok->rowCount() === 0) {
+                        throw new StokTidakCukupException('Stok "' . $p['nama'] . '" tidak mencukupi.');
+                    }
                 }
             }
+            foreach (array_keys($produkDisinkron) as $pid) { sinkron_total_stok($pdo, $pid); }
 
             $pdo->commit();
             if ($langsung) {
@@ -236,7 +256,10 @@ require __DIR__ . '/includes/header.php';
           </label>
         </div>
       <?php endif; ?>
-      <div id="wrapAlamatBaru" <?= $modeAlamat === 'tersimpan' ? 'style="display:none;"' : '' ?>>
+      <div id="wrapAlamatBaru" class="<?= $punyaAlamatTersimpan ? 'alamat-baru' : '' ?><?= $modeAlamat === 'tersimpan' ? ' is-hidden' : '' ?>">
+        <?php if ($punyaAlamatTersimpan): ?>
+          <div class="alamat-baru-judul"><span class="alamat-baru-plus">+</span> Tambah alamat baru</div>
+        <?php endif; ?>
         <label>Alamat Pengiriman<?= $punyaAlamatTersimpan ? ' Baru' : '' ?>
           <textarea name="alamat" id="inputAlamat" rows="3" <?= $modeAlamat === 'lain' ? 'required' : '' ?>><?= h($_POST['alamat'] ?? ($punyaAlamatTersimpan ? '' : ($pelangganData['alamat'] ?? ''))) ?></textarea>
         </label>
