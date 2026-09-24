@@ -158,7 +158,7 @@ require __DIR__ . '/includes/header.php';
   </div>
 </section>
 
-<section class="section order-steps-section">
+<section class="section order-steps-section" id="cara-order">
   <h2 class="section-title">Cara Order</h2>
   <div class="order-steps">
     <div class="order-step">

@@ -40,6 +40,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stokWarna[(string) $w] = max(0, $nilai);
         }
         $produk['stok'] = array_sum($stokWarna);
+        // Tanpa tabel produk_warna, stok per warna tidak bisa disimpan: jangan diam-diam gagal.
+        if (!varian_tersedia($pdo)) {
+            $errors[] = 'Stok per warna belum aktif di database ini. Jalankan db/produk_warna.sql di pgAdmin (lokal & Railway), lalu simpan lagi.';
+        }
     } else {
         $produk['stok'] = (int) ($_POST['stok'] ?? 0);
     }
@@ -218,6 +222,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
       <div class="stok-warna-box" id="stokWarnaBox" hidden>
         <p class="stok-warna-judul">Stok per warna</p>
+        <?php if (!varian_tersedia($pdo)): ?>
+          <p style="color:#A33131;font-size:0.8rem;font-weight:600;">Belum aktif: tabel produk_warna belum ada di database ini. Jalankan db/produk_warna.sql dulu, kalau tidak stok per warna tidak akan tersimpan.</p>
+        <?php endif; ?>
         <div id="stokWarnaList"></div>
       </div>
       <script>

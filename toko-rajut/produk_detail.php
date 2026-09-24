@@ -98,10 +98,11 @@ require __DIR__ . '/includes/header.php';
         <?php endif; ?>
         <div class="produk-beli-qty">
           <label for="jumlah-beli">Jumlah</label>
-          <input type="number" id="jumlah-beli" name="jumlah" value="1" min="1" max="<?= $stokAwal ?>" form="form-tambah-keranjang">
+          <input type="number" id="jumlah-beli" name="jumlah" value="1" min="1" data-maks="<?= $stokAwal ?>" form="form-tambah-keranjang">
         </div>
         <button type="submit" class="btn btn-primary">Tambah ke Keranjang</button>
       </form>
+      <p id="jumlah-peringatan" hidden style="color:#A33131;font-size:0.86rem;font-weight:600;margin:-0.2rem 0 1rem;"></p>
 
       <form method="get" action="checkout.php" class="produk-beli-langsung">
         <input type="hidden" name="beli_id" value="<?= (int) $produk['id'] ?>">
@@ -125,9 +126,31 @@ require __DIR__ . '/includes/header.php';
 (function(){
   var jumlahInput = document.getElementById('jumlah-beli');
   var beliJumlahHidden = document.getElementById('beli-jumlah-hidden');
+  var peringatan = document.getElementById('jumlah-peringatan');
+
+  // Jumlah tidak boleh melebihi stok warna yang dipilih; kalau dilebihi, dikembalikan ke batas + peringatan.
+  function rapikanJumlah() {
+    if (!jumlahInput) return;
+    var maks = parseInt(jumlahInput.getAttribute('data-maks'), 10);
+    var v = parseInt(jumlahInput.value, 10);
+    var pesan = '';
+    if (!isNaN(maks) && maks > 0 && v > maks) {
+      jumlahInput.value = maks;
+      v = maks;
+      pesan = 'Stok terbatas, maksimal pembelian ' + maks + ' pcs.';
+    }
+    if (peringatan) {
+      peringatan.textContent = pesan;
+      peringatan.hidden = !pesan;
+    }
+    if (beliJumlahHidden) beliJumlahHidden.value = (isNaN(v) || v < 1) ? 1 : v;
+  }
+
   if (jumlahInput && beliJumlahHidden) {
-    jumlahInput.addEventListener('input', function(){
-      beliJumlahHidden.value = jumlahInput.value || 1;
+    jumlahInput.addEventListener('input', rapikanJumlah);
+    jumlahInput.addEventListener('blur', function(){
+      if (!jumlahInput.value || parseInt(jumlahInput.value, 10) < 1) jumlahInput.value = 1;
+      rapikanJumlah();
     });
   }
   var warnaRadios = document.querySelectorAll('input[name="warna"]');
@@ -142,9 +165,8 @@ require __DIR__ . '/includes/header.php';
         var tampil = document.getElementById('stok-tampil');
         if (tampil && !isNaN(stok)) tampil.textContent = stok + ' pcs';
         if (jumlahInput && !isNaN(stok) && stok > 0) {
-          jumlahInput.max = stok;
-          if (parseInt(jumlahInput.value, 10) > stok) jumlahInput.value = stok;
-          if (beliJumlahHidden) beliJumlahHidden.value = jumlahInput.value || 1;
+          jumlahInput.setAttribute('data-maks', stok);
+          rapikanJumlah();
         }
       });
     });

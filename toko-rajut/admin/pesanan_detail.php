@@ -270,11 +270,33 @@ $totalBaruPesan = (int) $pdo->query("SELECT COUNT(*) FROM pesan WHERE status = '
 
       <div class="pesanan-side-card" style="margin-top:1.2rem;">
         <h2 class="pesanan-detail-subheading">Ekspedisi &amp; Resi</h2>
+        <?php
+        $daftarEkspedisi = ['JNE', 'J&T Express', 'SiCepat', 'AnterAja', 'Ninja Express', 'ID Express', 'Pos Indonesia', 'GoSend / GrabExpress'];
+        $ekspedisiTersimpan = $transaksi['ekspedisi'] ?? '';
+        $ekspedisiLainnya = $ekspedisiTersimpan !== '' && !in_array($ekspedisiTersimpan, $daftarEkspedisi, true);
+        ?>
         <form method="post" action="pesanan_detail.php?id=<?= $id ?>" class="pesanan-status-form pesanan-status-manual" style="flex-wrap:wrap;">
-          <input type="text" name="ekspedisi" placeholder="Ekspedisi (mis. JNE, J&amp;T)" value="<?= h($transaksi['ekspedisi'] ?? '') ?>">
+          <select name="ekspedisi_pilih" id="pilihEkspedisi">
+            <option value="">Pilih ekspedisi...</option>
+            <?php foreach ($daftarEkspedisi as $e): ?>
+              <option value="<?= h($e) ?>" <?= $ekspedisiTersimpan === $e ? 'selected' : '' ?>><?= h($e) ?></option>
+            <?php endforeach; ?>
+            <option value="__lainnya__" <?= $ekspedisiLainnya ? 'selected' : '' ?>>Lainnya...</option>
+          </select>
+          <input type="text" name="ekspedisi_lainnya" id="ekspedisiLainnya" placeholder="Nama ekspedisi lain" value="<?= $ekspedisiLainnya ? h($ekspedisiTersimpan) : '' ?>" style="<?= $ekspedisiLainnya ? '' : 'display:none;' ?>">
           <input type="text" name="no_resi" placeholder="Nomor resi" value="<?= h($transaksi['no_resi'] ?? '') ?>">
           <button type="submit" name="simpan_pengiriman" value="1" class="btn-pill">Simpan</button>
         </form>
+        <script>
+        (function(){
+          var sel = document.getElementById('pilihEkspedisi');
+          var lain = document.getElementById('ekspedisiLainnya');
+          if (!sel || !lain) return;
+          function toggleLainnya(){ lain.style.display = sel.value === '__lainnya__' ? '' : 'none'; }
+          sel.addEventListener('change', toggleLainnya);
+          toggleLainnya();
+        })();
+        </script>
         <p style="font-size:.82rem;color:#6b7280;margin-top:.75rem;">
           Kalau diisi, pelanggan yang login bisa melihat info ini di halaman "Pesanan Saya".
         </p>

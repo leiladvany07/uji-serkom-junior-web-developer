@@ -113,7 +113,7 @@ $maxOmzetGrafik = max(1, ...array_values($grafikData));
 
     <?php if ($totalProdukHabis > 0 || $totalProdukMenipis > 0): ?>
     <div class="laporan-chart-card" style="margin-bottom:1.6rem;border-left:4px solid #A33131;">
-      <h2 class="pesanan-detail-subheading">Perlu Diisi Ulang</h2>
+      <h2 class="pesanan-detail-subheading">Stok Produk</h2>
       <?php if ($totalProdukHabis > 0): ?>
         <p style="font-size:0.88rem;margin-bottom:0.4rem;">
           <span class="produk-status nonaktif" style="background:#F6DCDC;color:#A33131;"><?= $totalProdukHabis ?> produk stoknya habis</span>
