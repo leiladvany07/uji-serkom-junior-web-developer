@@ -33,11 +33,16 @@ if (!$transaksi) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['simpan_pengiriman'])) {
-    $ekspedisi = trim($_POST['ekspedisi'] ?? '');
+    // Dropdown mengirim "ekspedisi_pilih"; kalau nilainya "__lainnya__", nama ekspedisi
+    // sebenarnya ada di "ekspedisi_lainnya" (kolom teks yang muncul saat itu dipilih).
+    $ekspedisiPilih = trim($_POST['ekspedisi_pilih'] ?? '');
+    $ekspedisi = ($ekspedisiPilih === '__lainnya__')
+        ? trim($_POST['ekspedisi_lainnya'] ?? '')
+        : $ekspedisiPilih;
     $noResi = trim($_POST['no_resi'] ?? '');
     $pdo->prepare('UPDATE transaksi SET ekspedisi = ?, no_resi = ? WHERE id = ?')
         ->execute([$ekspedisi ?: null, $noResi ?: null, $id]);
-    header('Location: pesanan_detail.php?id=' . $id);
+    header('Location: pesanan_detail.php?id=' . $id . '&pengiriman_updated=1');
     exit;
 }
 
@@ -149,6 +154,12 @@ $totalBaruPesan = (int) $pdo->query("SELECT COUNT(*) FROM pesan WHERE status = '
 
   <main class="admin-main">
     <a href="pesanan.php" class="admin-back">&larr; Kembali ke daftar pesanan</a>
+
+    <?php if (isset($_GET['pengiriman_updated']) && $_GET['pengiriman_updated'] == '1'): ?>
+      <div class="pesanan-notif-banner">
+        <p>Info ekspedisi &amp; nomor resi berhasil disimpan.</p>
+      </div>
+    <?php endif; ?>
 
     <?php if (isset($_GET['status_updated']) && $_GET['status_updated'] == '1'): ?>
       <div class="pesanan-notif-banner">
