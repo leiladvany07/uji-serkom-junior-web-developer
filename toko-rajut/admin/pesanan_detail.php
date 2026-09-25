@@ -249,9 +249,14 @@ $totalBaruPesan = (int) $pdo->query("SELECT COUNT(*) FROM pesan WHERE status = '
       </div>
     </div>
 
-    <div class="pesanan-status-wrap">
+    <div class="pesanan-status-grid">
       <div class="pesanan-side-card">
-        <h2 class="pesanan-detail-subheading">Ubah Status</h2>
+        <div class="pesanan-side-card-heading">
+          <span class="pesanan-side-card-icon">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3.5-7.1"></path><polyline points="21 3 21 9 15 9"></polyline></svg>
+          </span>
+          <h2 class="pesanan-detail-subheading" style="margin-bottom:0;">Ubah Status</h2>
+        </div>
         <form method="post" action="pesanan_detail.php?id=<?= $id ?>" class="pesanan-status-form">
           <select name="set_status" onchange="this.form.submit()">
             <?php foreach ($statusOptions as $opt): ?>
@@ -259,23 +264,36 @@ $totalBaruPesan = (int) $pdo->query("SELECT COUNT(*) FROM pesan WHERE status = '
             <?php endforeach; ?>
           </select>
         </form>
+        <div class="pesanan-status-divider">atau</div>
         <form method="post" action="pesanan_detail.php?id=<?= $id ?>" class="pesanan-status-form pesanan-status-manual">
-          <input type="text" name="set_status" placeholder="Atau ketik status baru...">
+          <input type="text" name="set_status" placeholder="Ketik status baru...">
           <button type="submit" class="btn-pill">Simpan</button>
         </form>
-        <p style="font-size:.82rem;color:#6b7280;margin-top:.75rem;">
+        <p class="pesanan-side-card-hint">
           Setiap kali status diubah, tombol kirim notifikasi WhatsApp ke pembeli akan muncul di atas.
         </p>
       </div>
 
-      <div class="pesanan-side-card" style="margin-top:1.2rem;">
-        <h2 class="pesanan-detail-subheading">Ekspedisi &amp; Resi</h2>
+      <div class="pesanan-side-card">
+        <div class="pesanan-side-card-heading">
+          <span class="pesanan-side-card-icon">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+          </span>
+          <h2 class="pesanan-detail-subheading" style="margin-bottom:0;">Ekspedisi &amp; Resi</h2>
+        </div>
         <?php
         $daftarEkspedisi = ['JNE', 'J&T Express', 'SiCepat', 'AnterAja', 'Ninja Express', 'ID Express', 'Pos Indonesia', 'GoSend / GrabExpress'];
         $ekspedisiTersimpan = $transaksi['ekspedisi'] ?? '';
+        $noResiTersimpan = $transaksi['no_resi'] ?? '';
         $ekspedisiLainnya = $ekspedisiTersimpan !== '' && !in_array($ekspedisiTersimpan, $daftarEkspedisi, true);
         ?>
-        <form method="post" action="pesanan_detail.php?id=<?= $id ?>" class="pesanan-status-form pesanan-status-manual" style="flex-wrap:wrap;">
+        <?php if ($ekspedisiTersimpan !== '' || $noResiTersimpan !== ''): ?>
+          <div class="pengiriman-tersimpan">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            <span><?= $ekspedisiTersimpan !== '' ? h($ekspedisiTersimpan) : 'Ekspedisi belum diisi' ?><?= $noResiTersimpan !== '' ? ' &middot; ' . h($noResiTersimpan) : '' ?></span>
+          </div>
+        <?php endif; ?>
+        <form method="post" action="pesanan_detail.php?id=<?= $id ?>" class="pesanan-status-form pesanan-ekspedisi-row">
           <select name="ekspedisi_pilih" id="pilihEkspedisi">
             <option value="">Pilih ekspedisi...</option>
             <?php foreach ($daftarEkspedisi as $e): ?>
@@ -284,8 +302,8 @@ $totalBaruPesan = (int) $pdo->query("SELECT COUNT(*) FROM pesan WHERE status = '
             <option value="__lainnya__" <?= $ekspedisiLainnya ? 'selected' : '' ?>>Lainnya...</option>
           </select>
           <input type="text" name="ekspedisi_lainnya" id="ekspedisiLainnya" placeholder="Nama ekspedisi lain" value="<?= $ekspedisiLainnya ? h($ekspedisiTersimpan) : '' ?>" style="<?= $ekspedisiLainnya ? '' : 'display:none;' ?>">
-          <input type="text" name="no_resi" placeholder="Nomor resi" value="<?= h($transaksi['no_resi'] ?? '') ?>">
-          <button type="submit" name="simpan_pengiriman" value="1" class="btn-pill">Simpan</button>
+          <input type="text" name="no_resi" placeholder="Nomor resi" value="<?= h($noResiTersimpan) ?>">
+          <button type="submit" name="simpan_pengiriman" value="1" class="btn-pill btn-pill-solid">Simpan</button>
         </form>
         <script>
         (function(){
@@ -297,7 +315,7 @@ $totalBaruPesan = (int) $pdo->query("SELECT COUNT(*) FROM pesan WHERE status = '
           toggleLainnya();
         })();
         </script>
-        <p style="font-size:.82rem;color:#6b7280;margin-top:.75rem;">
+        <p class="pesanan-side-card-hint">
           Kalau diisi, pelanggan yang login bisa melihat info ini di halaman "Pesanan Saya".
         </p>
       </div>
