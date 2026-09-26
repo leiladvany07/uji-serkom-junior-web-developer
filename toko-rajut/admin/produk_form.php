@@ -54,7 +54,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($produk['stok'] < 0) $errors[] = 'Stok tidak boleh negatif.';
 
     // Upload foto baru (kalau ada dipilih)
-    $assetsDir = __DIR__ . '/../assets/';
+    // Disimpan ke assets/uploads/ (bukan langsung ke assets/) supaya folder ini
+    // yang di-mount sebagai Railway Volume, tanpa menimpa gambar bawaan yang
+    // sudah ada di assets/ sejak awal (ikut ter-commit di git).
+    $assetsDir = __DIR__ . '/../assets/uploads/';
+    if (!is_dir($assetsDir)) {
+        mkdir($assetsDir, 0777, true);
+    }
     $uploadedNames = [];
     $allowedExt = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'];
 
@@ -72,7 +78,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $newName = strtolower($safeBase) . '-' . substr(uniqid(), -6) . '.' . $ext;
 
             if (move_uploaded_file($_FILES['gambar_files']['tmp_name'][$i], $assetsDir . $newName)) {
-                $uploadedNames[] = $newName;
+                // Disimpan ke DB dengan prefix "uploads/" karena semua halaman
+                // menampilkan gambar lewat "assets/{$gambar}".
+                $uploadedNames[] = 'uploads/' . $newName;
             } else {
                 $errors[] = "Gagal mengunggah file \"$originalName\".";
             }
