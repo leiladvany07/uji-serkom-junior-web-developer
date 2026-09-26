@@ -152,7 +152,7 @@ require __DIR__ . '/includes/header.php';
         <form class="contact-form" method="post" action="kontak.php" novalidate>
             <?php if ($berhasil): ?>
                 <p class="form-success">
-                    Pesan Anda sudah terkirim. Kami akan membalas secepatnya. Cek juga email Anda untuk konfirmasi.
+                    Pesan Anda sudah terkirim. Kami akan membalas secepatnya.
                 </p>
             <?php endif; ?>
 

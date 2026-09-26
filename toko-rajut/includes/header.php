@@ -38,7 +38,7 @@ if (!isset($pdo)) { require_once __DIR__ . '/../config.php'; }
         <a href="<?= BASE_URL ?>/pesanan_saya.php" class="nav-account-link">Pesanan Saya</a>
         <a href="<?= BASE_URL ?>/logout.php" class="nav-account-link">Keluar</a>
       <?php else: ?>
-        <a href="<?= BASE_URL ?>/login.php" class="nav-account-link">Masuk</a>
+        <a href="<?= BASE_URL ?>/login.php" class="nav-account-link">Login/Daftar</a>
       <?php endif; ?>
 
       <?php $jumlahKeranjang = array_sum($_SESSION['keranjang'] ?? []); ?>
